@@ -152,6 +152,10 @@ CREATE POLICY "anon_select_stock"
   ON stock FOR SELECT TO anon USING (true);
 
 -- Grants
+GRANT ALL ON users TO service_role;
+GRANT ALL ON paint_items TO service_role;
+GRANT ALL ON stock TO service_role;
+GRANT ALL ON log TO service_role;
 GRANT SELECT ON paint_items TO anon;
 GRANT SELECT ON stock TO anon;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon;

@@ -1,8 +1,8 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"main": ".open-next/worker.js",
-	"name": "project-stok-cat",
-	"compatibility_date": "2026-06-17",
+	"name": "paintmanagementstock",
+	"compatibility_date": "2026-06-18",
 	"compatibility_flags": [
 		"nodejs_compat",
 		"global_fetch_strictly_public"
@@ -16,12 +16,20 @@
 			// Self-reference service binding, the service name must match the worker name
 			// see https://opennext.js.org/cloudflare/caching
 			"binding": "WORKER_SELF_REFERENCE",
-			"service": "project-stok-cat"
+			"service": "paintmanagementstock"
 		}
 	],
 	"images": {
 		// Enable image optimization
 		// see https://opennext.js.org/cloudflare/howtos/image
 		"binding": "IMAGES"
+	},
+	// Public Supabase config (NOT secret — the anon key and URL are exposed to
+	// the browser by design). Declared here so deploys don't strip them from the
+	// Worker; createAdminClient() reads NEXT_PUBLIC_SUPABASE_URL at runtime.
+	// JWT_SECRET and SUPABASE_SERVICE_ROLE_KEY stay as Dashboard secrets, never here.
+	"vars": {
+		"NEXT_PUBLIC_SUPABASE_URL": "https://ejsjototekapdlpscotr.supabase.co",
+		"NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqc2pvdG90ZWthcGRscHNjb3RyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3ODgxODgsImV4cCI6MjA5NzM2NDE4OH0.ouy29aj-SpktvYSECROlJt0NPfimzdCcy8Lq60enopg"
 	}
 }

@@ -52,6 +52,7 @@ export function LowStockTable({ lowStock }: LowStockTableProps) {
           </div>
         </CardHeader>
         <CardContent className="p-0">
+          <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-rose-50/40 border-b border-rose-100">
@@ -106,6 +107,7 @@ export function LowStockTable({ lowStock }: LowStockTableProps) {
               })}
             </tbody>
           </table>
+          </div>
         </CardContent>
       </Card>
     </section>

@@ -35,6 +35,7 @@ export function UsersTable({
 }: UsersTableProps) {
   return (
     <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
       <table className="w-full border-collapse">
         <thead>
           <tr className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
@@ -145,6 +146,7 @@ export function UsersTable({
           )}
         </tbody>
       </table>
+      </div>
       <Pagination
         currentPage={page}
         totalPages={totalPages}

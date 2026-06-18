@@ -1,5 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ColorPicker } from "@/components/shared/color-picker";
 import type { PaintItemForm } from "@/hooks/use-paint-items";
 
 interface PaintItemFormFieldsProps {
@@ -34,22 +35,10 @@ export function PaintItemFormFields({ form, setForm }: PaintItemFormFieldsProps)
         </div>
         <div className="space-y-2">
           <Label className="text-sm font-semibold text-[#334155]">Warna (Hex)</Label>
-          <div className="flex items-center gap-2">
-            <div className="w-11 h-11 rounded-xl border-2 border-[#E2E8F0] shrink-0 overflow-hidden">
-              <input
-                type="color"
-                value={form.color_hex}
-                onChange={(e) => setForm({ ...form, color_hex: e.target.value })}
-                className="w-full h-full cursor-pointer border-0 p-0 scale-150"
-              />
-            </div>
-            <Input
-              value={form.color_hex}
-              onChange={(e) => setForm({ ...form, color_hex: e.target.value })}
-              className="h-11 rounded-xl border-[#CBD5E1] font-mono text-sm"
-              maxLength={7}
-            />
-          </div>
+          <ColorPicker
+            value={form.color_hex}
+            onChange={(color) => setForm({ ...form, color_hex: color })}
+          />
         </div>
       </div>
 

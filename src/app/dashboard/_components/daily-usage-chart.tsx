@@ -15,9 +15,9 @@ import type { DateRangePreset } from "@/hooks/use-daily-usage";
 
 /* ── Bar configuration ── */
 const BAR_CONFIG = [
-  { key: "issued",   name: "Dikeluarkan", fill: "#111827", label: "Dikeluarkan dari gudang" },
-  { key: "consumed", name: "Dipakai",     fill: "#d1493f", label: "Dipakai / Terpakai" },
-  { key: "wasted",   name: "Dibuang",     fill: "#2f855a", label: "Dibuang / Dispose" },
+  { key: "issued",   name: "Dikeluarkan", fill: "#3b82f6", label: "Dikeluarkan dari gudang" },
+  { key: "consumed", name: "Dipakai",     fill: "#f59e0b", label: "Dipakai / Terpakai" },
+  { key: "wasted",   name: "Dibuang",     fill: "#dc2626", label: "Dibuang / Dispose" },
 ] as const;
 
 /* ── Custom Tooltip ── */
@@ -40,7 +40,6 @@ function ChartTooltip({ active, payload, label }: TooltipProps) {
 
   // Find the largest value for visual emphasis
   const maxVal = Math.max(...payload.map((p) => p.value));
-  const total = payload.reduce((sum, p) => sum + (p.value || 0), 0);
 
   // Filter out zero entries for cleaner display
   const visibleEntries = payload.filter((p) => p.value > 0);
@@ -81,18 +80,6 @@ function ChartTooltip({ active, payload, label }: TooltipProps) {
           })
         )}
       </div>
-
-      {/* Total footer */}
-      {visibleEntries.length > 1 && (
-        <div className="px-4 py-2 border-t border-[#F1F5F9] bg-[#FAFBFC]">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-[#64748B]">Total</span>
-            <span className="text-xs font-bold text-[#1e344a] tabular-nums">
-              {total.toFixed(1)} <span className="text-[10px] font-normal text-[#94A3B8]">kg</span>
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

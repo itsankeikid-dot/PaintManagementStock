@@ -8,7 +8,7 @@ import type { Log, LogType, PaintItem, User } from "@/types/database";
  *  PAINT_CONSUMED is system-generated — no user role can trigger it manually. */
 const ALLOWED_ROLES: Record<LogType, string[]> = {
   STOCK_IN: ["admin", "warehouse"],
-  STOCK_OUT: ["admin", "warehouse"],
+  STOCK_OUT: ["admin", "sideroom"],
   SIDEROOM_IN: ["admin", "sideroom"],
   SIDEROOM_USE: ["admin", "sideroom"],
   DISPOSE: ["admin", "sideroom"],
@@ -137,6 +137,17 @@ async function createTransaction(
 
     // The portion not returned as residual is consumed during painting
     consumedQty = pendingResidual - storedQty;
+
+    // Guard: receiving the residual subtracts consumedQty from the sideroom
+    // balance. If paint was already used/disposed from the sideroom before the
+    // residual was recorded, that subtraction could push the balance negative.
+    // Block it so stock_sideroom can never go below zero.
+    if (stock.stock_sideroom < consumedQty) {
+      return {
+        success: false,
+        error: `Stok sideroom tidak cukup untuk mencatat sisa ini (tersedia: ${stock.stock_sideroom.toFixed(2)} kg, dibutuhkan: ${consumedQty.toFixed(2)} kg). Catat "Terima Sisa" sebelum melakukan Pakai/Dispose.`,
+      };
+    }
   }
 
   // Insert log entry (qty stored in kg)
@@ -162,10 +173,19 @@ async function createTransaction(
       stockUpdate = { stock_warehouse: stock.stock_warehouse + storedQty };
       break;
     case "STOCK_OUT":
-      stockUpdate = { stock_warehouse: stock.stock_warehouse - storedQty };
+      // Paint leaving the warehouse moves straight into the sideroom balance:
+      // warehouse decreases and sideroom increases by the same kg.
+      stockUpdate = {
+        stock_warehouse: stock.stock_warehouse - storedQty,
+        stock_sideroom: stock.stock_sideroom + storedQty,
+      };
       break;
     case "SIDEROOM_IN":
-      stockUpdate = { stock_sideroom: stock.stock_sideroom + storedQty };
+      // The full STOCK_OUT qty already entered the sideroom balance.
+      // Receiving the residual only confirms how much came back; the rest was
+      // consumed during painting, so we DECREASE sideroom by the consumed kg.
+      // (consumedQty = pendingResidual - storedQty, computed above.)
+      stockUpdate = { stock_sideroom: stock.stock_sideroom - consumedQty };
       break;
     case "DISPOSE":
       stockUpdate = { stock_sideroom: stock.stock_sideroom - storedQty };

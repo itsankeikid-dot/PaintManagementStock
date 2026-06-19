@@ -78,9 +78,13 @@ export function StockOutConfirmDialog({
 
             {currentStock && (
               <p className="text-xs text-[#64748B] bg-white/70 rounded-lg px-3 py-2">
-                Sisa gudang setelah transaksi:{" "}
+                Gudang setelah keluar:{" "}
                 <strong className="text-[#1e344a]">
                   {(currentStock.stock_warehouse - qtyKg).toFixed(2)} kg
+                </strong>
+                {" · "}Sideroom jadi:{" "}
+                <strong className="text-[#1e344a]">
+                  {(currentStock.stock_sideroom + qtyKg).toFixed(2)} kg
                 </strong>
               </p>
             )}

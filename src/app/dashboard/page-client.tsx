@@ -90,6 +90,8 @@ export default function DashboardPageClient({ role }: { role: UserRole }) {
             logs={recentLogs}
             pageSize={10}
             title="Riwayat Transaksi"
+            searchable
+            showTypeFilter
             headerAction={
               <button
                 onClick={handleExportTransactions}

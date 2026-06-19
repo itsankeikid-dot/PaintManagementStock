@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { LOG_TYPE_COLORS, LOG_TYPE_LABELS } from "@/lib/constants";
 import { formatDateTimeWIB } from "@/lib/date-utils";
 import { formatQty } from "@/lib/format-utils";
-import type { Log, PaintItem, User } from "@/types/database";
-import { ClipboardList, ChevronLeft, ChevronRight } from "lucide-react";
+import type { Log, LogType, PaintItem, User } from "@/types/database";
+import { ClipboardList, ChevronLeft, ChevronRight, Search, X, Filter } from "lucide-react";
+
+const ALL_LOG_TYPES = Object.keys(LOG_TYPE_LABELS) as LogType[];
 
 interface ActivityFeedProps {
   logs: (Log & { paint_items: PaintItem; users: User })[];
@@ -14,20 +16,58 @@ interface ActivityFeedProps {
   title?: string;
   /** Optional action element rendered in the header (e.g. export button) */
   headerAction?: React.ReactNode;
+  /** Show search input to filter by paint name or color code */
+  searchable?: boolean;
+  /** Show transaction type filter chips */
+  showTypeFilter?: boolean;
+  /** Restrict displayed log types (hides non-matching logs entirely) */
+  filterTypes?: LogType[];
 }
 
 /**
- * Reusable paginated activity feed.
+ * Reusable paginated activity feed with optional search and type filtering.
  * Used on Warehouse, Sideroom, and Dashboard pages.
  */
-export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", headerAction }: ActivityFeedProps) {
+export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", headerAction, searchable = false, showTypeFilter = false, filterTypes }: ActivityFeedProps) {
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [activeTypes, setActiveTypes] = useState<Set<LogType>>(new Set());
 
-  const totalPages = Math.max(1, Math.ceil(logs.length / pageSize));
-  // Reset to page 1 if logs update and current page is out of range
+  const toggleType = (type: LogType) => {
+    setActiveTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+    setPage(1);
+  };
+
+  // Filter logs by type restriction, search + type chips
+  const filteredLogs = useMemo(() => {
+    let result = logs;
+    // Apply type restriction first (hard filter)
+    if (filterTypes && filterTypes.length > 0) {
+      result = result.filter((log) => filterTypes.includes(log.type as LogType));
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (log) =>
+          log.paint_items?.name?.toLowerCase().includes(q) ||
+          log.paint_items?.color_code?.toLowerCase().includes(q)
+      );
+    }
+    if (activeTypes.size > 0) {
+      result = result.filter((log) => activeTypes.has(log.type as LogType));
+    }
+    return result;
+  }, [logs, filterTypes, search, activeTypes]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const start = (safePage - 1) * pageSize;
-  const visibleLogs = logs.slice(start, start + pageSize);
+  const visibleLogs = filteredLogs.slice(start, start + pageSize);
 
   return (
     <div className="bg-white rounded-2xl border-2 border-[#E2E8F0] shadow-sm overflow-hidden">
@@ -41,18 +81,119 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
         </div>
         <div className="flex items-center gap-3">
           {headerAction}
-          {logs.length > 0 && (
+          {filteredLogs.length > 0 && (
             <span className="text-xs text-[#94A3B8]">
-              {start + 1}–{Math.min(start + pageSize, logs.length)} dari {logs.length}
+              {start + 1}–{Math.min(start + pageSize, filteredLogs.length)} dari {filteredLogs.length}
+              {filteredLogs.length < logs.length && (
+                <span className="text-[#64748B]"> (dari {logs.length} total)</span>
+              )}
             </span>
           )}
         </div>
       </div>
 
+      {/* Filter bar: search + type chips */}
+      {(searchable || showTypeFilter) && logs.length > 0 && (
+        <div className="px-5 py-4 border-b border-[#E2E8F0] bg-gradient-to-b from-[#F8FAFC] to-white space-y-3">
+          {searchable && (
+            <div className="relative group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#94A3B8] group-focus-within:text-[#0e7ad5] transition-colors duration-200" aria-hidden="true" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                placeholder="Cari nama cat atau kode warna..."
+                className="w-full h-10 pl-10 pr-10 rounded-xl border border-[#E2E8F0] bg-white text-sm text-[#1e344a] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0e7ad5]/20 focus:border-[#0e7ad5] shadow-sm hover:shadow-md focus:shadow-md transition-all duration-200"
+              />
+              {search && (
+                <button
+                  onClick={() => { setSearch(""); setPage(1); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#F1F5F9] flex items-center justify-center hover:bg-[#E2E8F0] active:bg-[#CBD5E1] transition-all duration-150 cursor-pointer group/clear"
+                  aria-label="Hapus pencarian"
+                >
+                  <X className="size-3.5 text-[#64748B] group-hover/clear:text-[#475569]" />
+                </button>
+              )}
+            </div>
+          )}
+          {showTypeFilter && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Filter className="size-3.5 text-[#94A3B8]" aria-hidden="true" />
+                <span className="text-xs font-medium text-[#64748B] uppercase tracking-wide">Filter Tipe</span>
+                {activeTypes.size > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-[#0e7ad5]/10 text-[10px] font-bold text-[#0e7ad5]">
+                    {activeTypes.size}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {ALL_LOG_TYPES.map((type) => {
+                  const isActive = activeTypes.has(type);
+                  const colorClasses = LOG_TYPE_COLORS[type];
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => toggleType(type)}
+                      className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer border ${
+                        isActive
+                          ? `${colorClasses} border-current/30 shadow-sm scale-[1.02]`
+                          : "bg-white border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1] hover:bg-[#F8FAFC] hover:text-[#475569]"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-current" : "bg-[#CBD5E1]"}`} />
+                        {LOG_TYPE_LABELS[type]}
+                      </span>
+                    </button>
+                  );
+                })}
+                {activeTypes.size > 0 && (
+                  <button
+                    onClick={() => { setActiveTypes(new Set()); setPage(1); }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F8FAFC] transition-all duration-150 cursor-pointer flex items-center gap-1"
+                  >
+                    <X className="size-3" />
+                    Reset
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Rows */}
       <div className="divide-y divide-[#F8FAFC]">
-        {logs.length === 0 ? (
-          <p className="text-center text-[#94A3B8] py-10 text-sm">Belum ada transaksi</p>
+        {filteredLogs.length === 0 ? (
+          <div className="text-center py-12 px-5">
+            {logs.length === 0 ? (
+              <div className="space-y-2">
+                <div className="w-12 h-12 rounded-full bg-[#F8FAFC] flex items-center justify-center mx-auto">
+                  <ClipboardList className="size-6 text-[#CBD5E1]" aria-hidden="true" />
+                </div>
+                <p className="text-[#94A3B8] text-sm font-medium">Belum ada transaksi</p>
+                <p className="text-[#CBD5E1] text-xs">Transaksi akan muncul di sini</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="w-12 h-12 rounded-full bg-[#F8FAFC] flex items-center justify-center mx-auto">
+                  <Search className="size-6 text-[#CBD5E1]" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-[#64748B] text-sm font-medium">Tidak ada transaksi yang cocok</p>
+                  <p className="text-[#94A3B8] text-xs mt-1">Coba ubah kata kunci atau filter</p>
+                </div>
+                <button
+                  onClick={() => { setSearch(""); setActiveTypes(new Set()); setPage(1); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0e7ad5]/10 text-xs font-semibold text-[#0e7ad5] hover:bg-[#0e7ad5]/20 transition-colors cursor-pointer"
+                >
+                  <X className="size-3.5" />
+                  Hapus semua filter
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           visibleLogs.map((log) => {
             const isPositive = log.type === "STOCK_IN" || log.type === "SIDEROOM_IN";

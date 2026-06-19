@@ -151,7 +151,7 @@ export default function WarehousePage({ paintItems }: WarehouseFormProps) {
 
       {/* ── Recent Activity ── */}
       <div className="md:col-span-1">
-        <ActivityFeed logs={recentLogs} pageSize={5} />
+        <ActivityFeed logs={recentLogs} pageSize={5} filterTypes={["STOCK_IN", "STOCK_OUT"]} />
       </div>
     </div>
   );

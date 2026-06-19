@@ -95,6 +95,13 @@ export function QtyStepper({
             type="number"
             min={min}
             step="any"
+            inputMode={decimals > 0 ? "decimal" : "numeric"}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            name="qty"
+            data-form-type="other"
             value={display}
             onFocus={() => setFocused(true)}
             onBlur={handleBlur}

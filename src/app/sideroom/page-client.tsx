@@ -296,7 +296,7 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
           </div>
         </div>
 
-        <form onSubmit={handleFormSubmit} className="space-y-5">
+        <form onSubmit={handleFormSubmit} className="space-y-5" autoComplete="off">
 
           <PaintSelect paintItems={paintItems} value={selectedPaint} onChange={setSelectedPaint} stockLevels={stockLevels} disabled={isLoading}>
             {selectedPaintItem && currentStock && (

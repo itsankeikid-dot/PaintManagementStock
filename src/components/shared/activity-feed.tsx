@@ -30,9 +30,9 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
   const visibleLogs = logs.slice(start, start + pageSize);
 
   return (
-    <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border-2 border-[#E2E8F0] shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] gap-3">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC] gap-3">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-[#F1F5F9] flex items-center justify-center">
             <ClipboardList className="size-4 text-[#64748B]" aria-hidden="true" />
@@ -59,7 +59,7 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
             return (
               <div
                 key={log.id}
-                className="flex items-center justify-between px-5 py-3.5 hover:bg-[#FAFBFC] transition-colors duration-100"
+                className="flex items-center justify-between px-5 py-4 sm:py-3.5 hover:bg-[#FAFBFC] transition-colors duration-100"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div

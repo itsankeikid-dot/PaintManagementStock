@@ -66,12 +66,9 @@ export function PaintSelect({
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  // Focus search input when dropdown opens
-  useEffect(() => {
-    if (open) {
-      requestAnimationFrame(() => searchRef.current?.focus());
-    }
-  }, [open]);
+  // Note: the search input is intentionally NOT auto-focused on open.
+  // Auto-focusing pops the mobile keyboard before the user wants it; instead
+  // the keyboard appears only when the user taps the search field directly.
 
   // Keep focused item scrolled into view
   useEffect(() => {

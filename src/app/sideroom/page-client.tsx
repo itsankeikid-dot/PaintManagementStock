@@ -17,7 +17,7 @@ import { Spinner } from "@/components/shared/spinner";
 import { PaintSelect } from "@/components/shared/paint-select";
 import { QtyStepper } from "@/components/shared/qty-stepper";
 import { useTransactionForm } from "@/hooks/use-transaction-form";
-import { ArrowUp, ArrowDown, Trash2, FlaskConical, PaintBucket, AlertTriangle } from "lucide-react";
+import { ArrowUp, ArrowDown, Trash2, FlaskConical, PaintBucket, AlertTriangle, Scale } from "lucide-react";
 import { formatStockSideroom } from "@/lib/format-utils";
 import { SideroomConfirmDialog } from "./_components/sideroom-confirm-dialog";
 import { StockOutConfirmDialog } from "./_components/stock-out-confirm-dialog";
@@ -157,7 +157,7 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
       stockout: `Stock Out: ${qty} kaleng (${qtyKg.toFixed(2)} kg) ${selectedPaintItem?.name} masuk ke sideroom`,
       receive:  `${kgLabel} ${selectedPaintItem?.name} diterima di sideroom`,
       use:      `${kgLabel} ${selectedPaintItem?.name} berhasil dicatat sebagai terpakai`,
-      dispose:  `${kgLabel} ${selectedPaintItem?.name} berhasil di-dispose`,
+      dispose:  `${kgLabel} ${selectedPaintItem?.name} berhasil dibuang`,
     };
 
     execute(actionFn, {
@@ -172,12 +172,12 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
     label: string;
     activeClass: string;
     inactiveHover: string;
-    borderClass: string;
     iconBg: string;
     iconColor: string;
     submitBg: string;
     submitShadow: string;
     submitRing: string;
+    accentBar: string;
     icon: React.ReactNode;
     formTitle: string;
     notesPlaceholder: string;
@@ -187,12 +187,12 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
       label: "Stock Out",
       activeClass: "bg-[#0e7ad5] text-white shadow-lg shadow-blue-200 focus-visible:ring-blue-500",
       inactiveHover: "hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 focus-visible:ring-blue-400",
-      borderClass: "border-blue-200",
       iconBg: "bg-blue-100",
       iconColor: "text-blue-600",
       submitBg: "bg-[#0e7ad5] hover:bg-[#0065b8]",
       submitShadow: "shadow-blue-200",
       submitRing: "focus-visible:ring-blue-500",
+      accentBar: "bg-gradient-to-r from-blue-400 to-blue-500",
       icon: <ArrowUp className="size-5" aria-hidden="true" />,
       formTitle: "Ambil Cat dari Gudang (Stock Out)",
       notesPlaceholder: "Nama pekerjaan, work order...",
@@ -202,12 +202,12 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
       label: "Terima Sisa",
       activeClass: "bg-amber-500 text-white shadow-lg shadow-amber-200 focus-visible:ring-amber-400",
       inactiveHover: "hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 focus-visible:ring-amber-400",
-      borderClass: "border-amber-200",
       iconBg: "bg-amber-100",
       iconColor: "text-amber-600",
       submitBg: "bg-amber-500 hover:bg-amber-600",
       submitShadow: "shadow-amber-200",
       submitRing: "focus-visible:ring-amber-400",
+      accentBar: "bg-gradient-to-r from-amber-400 to-amber-500",
       icon: <ArrowDown className="size-5" aria-hidden="true" />,
       formTitle: "Terima Sisa Cat dari Painting",
       notesPlaceholder: "Kondisi cat, persentase sisa...",
@@ -217,31 +217,31 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
       label: "Pakai",
       activeClass: "bg-purple-600 text-white shadow-lg shadow-purple-200 focus-visible:ring-purple-500",
       inactiveHover: "hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 focus-visible:ring-purple-400",
-      borderClass: "border-purple-200",
       iconBg: "bg-purple-100",
       iconColor: "text-purple-600",
       submitBg: "bg-purple-600 hover:bg-purple-700",
       submitShadow: "shadow-purple-200",
       submitRing: "focus-visible:ring-purple-500",
+      accentBar: "bg-gradient-to-r from-purple-400 to-purple-500",
       icon: <PaintBucket className="size-5" aria-hidden="true" />,
       formTitle: "Catat Pemakaian Cat Sideroom",
       notesPlaceholder: "Nomor job, nama pekerjaan...",
       submitLabel: "Catat Pemakaian",
     },
     dispose: {
-      label: "Dispose",
+      label: "Buang",
       activeClass: "bg-red-600 text-white shadow-lg shadow-red-200 focus-visible:ring-red-500",
       inactiveHover: "hover:bg-red-50 hover:border-red-200 hover:text-red-700 focus-visible:ring-red-400",
-      borderClass: "border-red-200",
       iconBg: "bg-red-100",
       iconColor: "text-red-600",
       submitBg: "bg-red-600 hover:bg-red-700",
       submitShadow: "shadow-red-200",
       submitRing: "focus-visible:ring-red-500",
+      accentBar: "bg-gradient-to-r from-red-400 to-red-500",
       icon: <Trash2 className="size-5" aria-hidden="true" />,
-      formTitle: "Dispose Cat Kadaluarsa / Tercampur",
+      formTitle: "Buang Cat Kadaluarsa / Tercampur",
       notesPlaceholder: "Alasan: kadaluarsa, tercampur thinner...",
-      submitLabel: "Dispose Cat",
+      submitLabel: "Buang Cat",
     },
   };
 
@@ -279,10 +279,16 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
         })}
       </div>
 
+      {/* Form + Activity grid (side-by-side on tablet landscape) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-5 items-start">
+
       {/* Form Card */}
-      <div className={`bg-white rounded-2xl border-2 p-5 shadow-sm transition-colors duration-200 ${cfg.borderClass}`}>
+      <div className="md:col-span-1 bg-white rounded-2xl border-2 border-[#E2E8F0] shadow-sm overflow-hidden transition-colors duration-200">
+        {/* Accent bar */}
+        <div className={`h-1.5 ${cfg.accentBar}`} />
+        <div className="p-5">
         {/* Form header */}
-        <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#F1F5F9]">
+        <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#E2E8F0]">
           <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${cfg.iconBg}`}>
             <FlaskConical className={`size-5 ${cfg.iconColor}`} aria-hidden="true" />
           </div>
@@ -301,17 +307,20 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
           <PaintSelect paintItems={paintItems} value={selectedPaint} onChange={setSelectedPaint} stockLevels={stockLevels} disabled={isLoading}>
             {selectedPaintItem && currentStock && (
               <div className="flex flex-wrap gap-2 pt-1">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-sm font-medium">
-                  <span className="w-2 h-2 rounded-full bg-blue-400" aria-hidden="true" />
-                  Gudang: {formatStockSideroom(currentStock.stock_warehouse)}
-                </span>
+                {isStockOut && (
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-sm font-medium">
+                    <span className="w-2 h-2 rounded-full bg-blue-400" aria-hidden="true" />
+                    Stok di Gudang: {formatStockSideroom(currentStock.stock_warehouse)}
+                  </span>
+                )}
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium">
                   <span className="w-2 h-2 rounded-full bg-amber-400" aria-hidden="true" />
-                  Sideroom: {formatStockSideroom(currentStock.stock_sideroom)}
+                  Stok di Sideroom: {formatStockSideroom(currentStock.stock_sideroom)}
                 </span>
                 {isStockOut && weightPerCan > 0 && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-sm font-medium">
-                    {weightPerCan} kg/kaleng
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-sm font-medium">
+                    <Scale className="size-3.5 text-slate-400" aria-hidden="true" />
+                    {weightPerCan} kg / kaleng
                   </span>
                 )}
                 {/* Pending residual badge - only in receive tab */}
@@ -353,7 +362,7 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
 
           <div className="space-y-1.5">
             <QtyStepper
-              label={isStockOut ? "Jumlah (kaleng)" : isReceive ? "Berat Sisa (kg)" : isUse ? "Berat Dipakai (kg)" : "Berat Dispose (kg)"}
+              label={isStockOut ? "Jumlah (kaleng)" : isReceive ? "Berat Sisa (kg)" : isUse ? "Berat Dipakai (kg)" : "Berat Dibuang (kg)"}
               value={qty}
               onChange={handleQtyChange}
               onQuickSelect={setQty}
@@ -413,10 +422,15 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
             {isLoading ? <><Spinner className="size-5" /> Memproses...</> : <>{cfg.icon} {cfg.submitLabel}</>}
           </button>
         </form>
+        </div>
       </div>
 
       {/* Recent Activity */}
-      <ActivityFeed logs={recentLogs} pageSize={5} />
+      <div className="md:col-span-1">
+        <ActivityFeed logs={recentLogs} pageSize={5} />
+      </div>
+
+      </div>
 
       {/* Confirmation Dialogs */}
       <StockOutConfirmDialog

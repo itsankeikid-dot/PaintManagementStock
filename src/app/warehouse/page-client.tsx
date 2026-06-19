@@ -9,7 +9,7 @@ import { Spinner } from "@/components/shared/spinner";
 import { PaintSelect } from "@/components/shared/paint-select";
 import { QtyStepper } from "@/components/shared/qty-stepper";
 import { useTransactionForm } from "@/hooks/use-transaction-form";
-import { ArrowDown, PackageCheck } from "lucide-react";
+import { ArrowDown, PackageCheck, Scale } from "lucide-react";
 
 interface WarehouseFormProps {
   paintItems: PaintItem[];
@@ -65,12 +65,15 @@ export default function WarehousePage({ paintItems }: WarehouseFormProps) {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-5 items-start">
 
       {/* ── Transaction Form ── */}
-      <div className="bg-white rounded-2xl border-2 border-emerald-200 p-5 shadow-sm">
+      <div className="md:col-span-1 bg-white rounded-2xl border-2 border-[#E2E8F0] shadow-sm overflow-hidden">
+        {/* Accent bar */}
+        <div className="h-1.5 bg-gradient-to-r from-emerald-400 to-emerald-500" />
+        <div className="p-5">
         {/* Form header */}
-        <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#F1F5F9]">
+        <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#E2E8F0]">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-emerald-100">
             <PackageCheck className="size-5 text-emerald-600" aria-hidden="true" />
           </div>
@@ -83,16 +86,13 @@ export default function WarehousePage({ paintItems }: WarehouseFormProps) {
           <PaintSelect paintItems={paintItems} value={selectedPaint} onChange={setSelectedPaint} stockLevels={stockLevels} disabled={isLoading}>
             {selectedPaintItem && currentStock && (
               <div className="flex flex-wrap gap-2 pt-1">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium">
+                <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
-                  Gudang: {currentStock.stock_warehouse.toFixed(2)} kg
+                  Stok di Gudang: {currentStock.stock_warehouse.toFixed(2)} kg
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium">
-                  <span className="w-2 h-2 rounded-full bg-amber-400" aria-hidden="true" />
-                  Sideroom: {currentStock.stock_sideroom.toFixed(2)} kg
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-sm font-medium">
-                  {weightPerCan} kg/kaleng
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-sm font-medium">
+                  <Scale className="size-3.5 text-slate-400" aria-hidden="true" />
+                  {weightPerCan} kg / kaleng
                 </span>
               </div>
             )}
@@ -146,10 +146,13 @@ export default function WarehousePage({ paintItems }: WarehouseFormProps) {
             )}
           </button>
         </form>
+        </div>
       </div>
 
       {/* ── Recent Activity ── */}
-      <ActivityFeed logs={recentLogs} pageSize={5} />
+      <div className="md:col-span-1">
+        <ActivityFeed logs={recentLogs} pageSize={5} />
+      </div>
     </div>
   );
 }

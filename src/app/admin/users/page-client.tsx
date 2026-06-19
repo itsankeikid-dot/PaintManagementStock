@@ -122,18 +122,30 @@ export default function UsersPageClient({ initialProfiles }: UsersPageClientProp
         </div>
       </div>
 
-      {/* ── Summary chips ── */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-sm text-[#475569]">
-          <UserRound className="size-3.5 text-[#94A3B8]" aria-hidden="true" />
-          <span className="font-semibold text-[#1e344a]">{u.profiles.length}</span> total user
+      {/* ── Summary cards ── */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {/* Total users card */}
+        <div className="flex items-center gap-3 p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+            <UserRound className="size-5 text-slate-500" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-2xl font-bold text-[#1e344a] tabular-nums">{u.profiles.length}</p>
+            <p className="text-xs font-medium text-[#64748B]">Total User</p>
+          </div>
         </div>
-        {(["admin", "warehouse", "sideroom"] as UserRole[]).map((role) => {
+        {/* Role-specific cards */}
+        {(["admin", "warehouse", "sideroom", "office"] as UserRole[]).map((role) => {
           const s = ROLE_STYLES[role];
           return (
-            <div key={role} className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium ${s.bg} ${s.border} ${s.text}`}>
-              {ROLE_ICONS[role]}
-              <span className="font-semibold">{u.roleCounts[role] ?? 0}</span> {role}
+            <div key={role} className={`flex items-center gap-3 p-4 rounded-2xl border shadow-sm ${s.bg} ${s.border}`}>
+              <div className={`w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center shrink-0`}>
+                {ROLE_ICONS[role]}
+              </div>
+              <div className="min-w-0">
+                <p className={`text-2xl font-bold tabular-nums ${s.text}`}>{u.roleCounts[role] ?? 0}</p>
+                <p className={`text-xs font-medium ${s.text} opacity-75`}>{ROLE_LABELS[role]}</p>
+              </div>
             </div>
           );
         })}

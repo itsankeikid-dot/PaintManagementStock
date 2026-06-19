@@ -87,6 +87,8 @@ export function AppHeader({
         { href: "/admin/paint-items", label: "Paint Items" },
         { href: "/admin/users", label: "Users" }
       );
+    } else if (userRole === "office") {
+      navLinks.push({ href: "/dashboard", label: "Dashboard" });
     } else if (userRole === "warehouse") {
       navLinks.push({ href: "/warehouse", label: "Warehouse" });
     } else if (userRole === "sideroom") {

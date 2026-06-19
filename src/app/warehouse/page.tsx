@@ -25,7 +25,7 @@ export default async function WarehousePage() {
         userRole={profile.role}
         title="Warehouse"
       />
-      <main className="container mx-auto px-4 py-6 max-w-xl text-base">
+      <main className="mx-auto px-4 py-6 text-base">
         <WarehousePageClient paintItems={paintItems} />
       </main>
     </div>

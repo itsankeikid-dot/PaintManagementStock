@@ -9,7 +9,7 @@
 export type LogType = "STOCK_IN" | "STOCK_OUT" | "SIDEROOM_IN" | "DISPOSE" | "SIDEROOM_USE" | "PAINT_CONSUMED";
 
 /** User roles determining access level */
-export type UserRole = "warehouse" | "sideroom" | "admin";
+export type UserRole = "warehouse" | "sideroom" | "admin" | "office";
 
 /** Paint item master data */
 export interface PaintItem {

@@ -12,7 +12,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ============================================================
 
 CREATE TYPE log_type AS ENUM ('STOCK_IN', 'STOCK_OUT', 'SIDEROOM_IN', 'DISPOSE', 'SIDEROOM_USE', 'PAINT_CONSUMED');
-CREATE TYPE user_role AS ENUM ('warehouse', 'sideroom', 'admin');
+CREATE TYPE user_role AS ENUM ('warehouse', 'sideroom', 'admin', 'office');
 
 -- ============================================================
 -- TABLES

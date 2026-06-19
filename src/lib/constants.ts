@@ -26,7 +26,8 @@ export const LOG_TYPE_COLORS: Record<string, string> = {
 export const ROLE_LABELS: Record<string, string> = {
   warehouse: "Warehouse Operator",
   sideroom: "Sideroom Operator",
-  admin: "Admin / Office",
+  admin: "Admin",
+  office: "Office",
 };
 
 /** Default low stock threshold — total stock (warehouse + sideroom) in kg. */
@@ -37,4 +38,5 @@ export const ROLE_DASHBOARD_ROUTES: Record<string, string> = {
   warehouse: "/warehouse",
   sideroom: "/sideroom",
   admin: "/dashboard",
+  office: "/dashboard",
 };

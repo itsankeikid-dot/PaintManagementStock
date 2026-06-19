@@ -12,7 +12,7 @@ export default async function DashboardPage() {
   const profile = await getUserProfile();
 
   if (!profile) redirect("/login");
-  if (profile.role !== "admin") {
+  if (profile.role !== "admin" && profile.role !== "office") {
     redirect(ROLE_DASHBOARD_ROUTES[profile.role] || "/login");
   }
 
@@ -24,7 +24,7 @@ export default async function DashboardPage() {
         title="Dashboard"
       />
       <main className="container mx-auto px-4 py-6">
-        <DashboardPageClient />
+        <DashboardPageClient role={profile.role} />
       </main>
     </div>
   );

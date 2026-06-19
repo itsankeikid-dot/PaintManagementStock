@@ -11,15 +11,12 @@ import { useEffect, useRef, useCallback, useState } from "react";
  *  2. Intercepts dangerous keyboard shortcuts (Ctrl+W, Alt+F4, etc.)
  *  3. Disables right-click context menu (optional)
  *  4. Auto-refocuses the window when it loses focus
- *  5. Requests Fullscreen on first user interaction (true kiosk mode)
- *  6. Shows an unlock panel for maintenance (hidden triple-click)
+ *  5. Shows an unlock panel for maintenance (hidden triple-click)
  */
 
 interface KioskGuardProps {
   /** Disable right-click context menu — default true */
   disableContextMenu?: boolean;
-  /** Auto-request fullscreen on first click — default true */
-  autoFullscreen?: boolean;
   /** Refocus window on blur — default true */
   autoRefocus?: boolean;
   /** Block dangerous shortcuts — default true */
@@ -61,7 +58,6 @@ function comboMatches(
 
 export default function KioskGuard({
   disableContextMenu = true,
-  autoFullscreen = true,
   autoRefocus = true,
   blockShortcuts = true,
 }: KioskGuardProps) {
@@ -131,44 +127,6 @@ export default function KioskGuard({
       if (refocusTimerRef.current) clearTimeout(refocusTimerRef.current);
     };
   }, [autoRefocus, unlocked]);
-
-  // ─── Fullscreen on first interaction ───────────────────────────────────────
-  useEffect(() => {
-    if (unlocked || isDev || !autoFullscreen) return;
-    if (typeof document === "undefined") return;
-
-    const requestFullscreen = () => {
-      const el = document.documentElement;
-      if (
-        !document.fullscreenElement &&
-        el.requestFullscreen
-      ) {
-        el.requestFullscreen().catch(() => {
-          // Silently fail — browser may refuse if not triggered by user gesture
-        });
-      }
-    };
-
-    document.addEventListener("click", requestFullscreen, { once: true });
-    return () => document.removeEventListener("click", requestFullscreen);
-  }, [autoFullscreen, unlocked]);
-
-  // ─── Prevent exiting fullscreen via Escape (re-enter) ─────────────────────
-  useEffect(() => {
-    if (unlocked || isDev || !autoFullscreen) return;
-
-    const handler = () => {
-      // If we just exited fullscreen, try to re-enter
-      if (!document.fullscreenElement) {
-        setTimeout(() => {
-          document.documentElement.requestFullscreen?.().catch(() => {});
-        }, 300);
-      }
-    };
-
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, [autoFullscreen, unlocked]);
 
   // ─── Hidden unlock gesture (triple-click bottom-right corner) ─────────────
   // Allows maintenance access without editing code.

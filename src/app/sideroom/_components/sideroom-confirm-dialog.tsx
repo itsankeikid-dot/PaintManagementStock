@@ -79,7 +79,7 @@ export function SideroomConfirmDialog({
 
             <div className={`flex items-center justify-between pt-2 border-t ${isDispose ? "border-red-200" : "border-purple-200"}`}>
               <span className="text-sm font-medium text-[#475569]">
-                {isDispose ? "Jumlah dispose:" : "Jumlah dipakai:"}
+                {isDispose ? "Jumlah dibuang:" : "Jumlah dipakai:"}
               </span>
               <span className={`text-3xl font-bold tabular-nums ${isDispose ? "text-red-600" : "text-purple-600"}`}>
                 {qty.toFixed(2)} <span className="text-base font-semibold">kg</span>
@@ -124,7 +124,7 @@ export function SideroomConfirmDialog({
             {isLoading ? (
               <><Spinner /> Memproses...</>
             ) : isDispose ? (
-              <><Trash2 className="size-4" aria-hidden="true" /> Ya, Dispose</>
+              <><Trash2 className="size-4" aria-hidden="true" /> Ya, Buang</>
             ) : (
               <><PaintBucket className="size-4" aria-hidden="true" /> Ya, Catat Pemakaian</>
             )}

@@ -25,7 +25,7 @@ export default async function SideroomPage() {
         userRole={profile.role}
         title="Sideroom"
       />
-      <main className="container mx-auto px-4 py-6 max-w-xl text-base">
+      <main className="mx-auto px-4 py-6 text-base">
         <SideroomPageClient paintItems={paintItems} />
       </main>
     </div>

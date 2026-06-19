@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Label } from "@/components/ui/label";
-import { ChevronDown, Check, ShieldCheck, Warehouse, FlaskConical } from "lucide-react";
+import { ChevronDown, Check, ShieldCheck, Warehouse, FlaskConical, Briefcase } from "lucide-react";
 import type { UserRole } from "@/types/database";
 import { ROLE_STYLES } from "./role-display";
 
@@ -27,7 +27,7 @@ const ROLE_OPTIONS: RoleOption[] = [
   {
     value: "warehouse",
     name: "Warehouse Operator",
-    description: "Kelola stok masuk & keluar dari gudang utama",
+    description: "Kelola penerimaan cat masuk ke gudang utama",
     icon: Warehouse,
     accentBg: "bg-blue-100",
     accentText: "text-blue-700",
@@ -36,7 +36,7 @@ const ROLE_OPTIONS: RoleOption[] = [
   {
     value: "sideroom",
     name: "Sideroom Operator",
-    description: "Kelola cat pakai, sisa, dan pembuangan di ruang cat",
+    description: "Ambil cat dari gudang, kelola pakai, sisa, dan pembuangan",
     icon: FlaskConical,
     accentBg: "bg-amber-100",
     accentText: "text-amber-700",
@@ -44,12 +44,21 @@ const ROLE_OPTIONS: RoleOption[] = [
   },
   {
     value: "admin",
-    name: "Admin / Office",
+    name: "Admin",
     description: "Akses penuh ke dashboard, data master, dan laporan",
     icon: ShieldCheck,
     accentBg: "bg-violet-100",
     accentText: "text-violet-700",
     ringColor: "ring-violet-200",
+  },
+  {
+    value: "office",
+    name: "Office",
+    description: "Akses dashboard untuk monitoring dan laporan",
+    icon: Briefcase,
+    accentBg: "bg-teal-100",
+    accentText: "text-teal-700",
+    ringColor: "ring-teal-200",
   },
 ];
 

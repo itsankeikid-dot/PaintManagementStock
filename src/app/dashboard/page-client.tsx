@@ -11,13 +11,14 @@ import { AdminQuickAccess } from "./_components/admin-quick-access";
 import { DailyUsageChart } from "./_components/daily-usage-chart";
 import { LowStockTable } from "./_components/low-stock-table";
 import { StockTable } from "./_components/stock-table";
+import type { UserRole } from "@/types/database";
 
 /**
  * Admin dashboard client component.
  * Shows stock overview, daily usage bar chart, low stock alerts, and transaction feed.
  * Uses Supabase Realtime to auto-update stock and logs without manual refresh.
  */
-export default function DashboardPageClient() {
+export default function DashboardPageClient({ role }: { role: UserRole }) {
   const {
     stats,
     stockData,
@@ -62,7 +63,7 @@ export default function DashboardPageClient() {
         onRefresh={refresh}
       />
 
-      <AdminQuickAccess />
+      {role === "admin" && <AdminQuickAccess />}
 
       <DailyUsageChart
         dailyUsage={dailyUsage}

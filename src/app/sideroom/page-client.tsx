@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   createStockOut,
-  createSideroomIn,
+  createResidualReturn,
   createDispose,
   createSideroomUse,
-  getPendingResidualKg,
 } from "@/actions/transactions";
 import type { PaintItem } from "@/types/database";
 import { ActivityFeed } from "@/components/shared/activity-feed";
@@ -17,7 +16,7 @@ import { Spinner } from "@/components/shared/spinner";
 import { PaintSelect } from "@/components/shared/paint-select";
 import { QtyStepper } from "@/components/shared/qty-stepper";
 import { useTransactionForm } from "@/hooks/use-transaction-form";
-import { ArrowUp, ArrowDown, Trash2, FlaskConical, PaintBucket, AlertTriangle, Scale } from "lucide-react";
+import { ArrowUp, ArrowDown, Trash2, FlaskConical, PaintBucket, Scale } from "lucide-react";
 import { formatStockSideroom } from "@/lib/format-utils";
 import { SideroomConfirmDialog } from "./_components/sideroom-confirm-dialog";
 import { StockOutConfirmDialog } from "./_components/stock-out-confirm-dialog";
@@ -30,6 +29,7 @@ interface SideroomPageClientProps {
 // Stock Out is entered in CANS; the other tabs are entered in KG.
 const QUICK_CANS = [1, 2, 5, 10, 20];
 const QUICK_KG = [0.5, 1, 2, 5];
+const QUICK_RECEIVE = [0, 0.5, 1, 2, 5]; // includes 0 for "all consumed"
 
 type ActiveTab = "stockout" | "receive" | "use" | "dispose";
 
@@ -38,15 +38,13 @@ type ActiveTab = "stockout" | "receive" | "use" | "dispose";
  * Tabs:
  *  - Stock Out (STOCK_OUT): take paint from warehouse → it enters the sideroom
  *    balance immediately. Entered in cans, stored in kg.
- *  - Terima Sisa (SIDEROOM_IN): reconcile returned residual; the un-returned
+ *  - Terima Sisa (RESIDUAL_RETURN): reconcile returned residual; the un-returned
  *    portion is auto-logged as PAINT_CONSUMED and removed from sideroom stock.
  *  - Pakai (SIDEROOM_USE) / Dispose (DISPOSE): both reduce sideroom stock.
  */
 export default function SideroomPageClient({ paintItems }: SideroomPageClientProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("stockout");
   const [condition, setCondition] = useState("murni");
-  const [pendingResidual, setPendingResidual] = useState<number | null>(null);
-  const [residualLoading, setResidualLoading] = useState(false);
   const {
     selectedPaint,
     setSelectedPaint,
@@ -75,26 +73,11 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
   const weightPerCan = selectedPaintItem?.weight_per_can ?? 0;
   const qtyKg = isStockOut ? qty * weightPerCan : qty;
 
-  // Fetch pending residual when a paint is selected in the "receive" tab
-  useEffect(() => {
-    if (activeTab !== "receive" || !selectedPaint) {
-      setPendingResidual(null);
-      return;
-    }
-    let cancelled = false;
-    setResidualLoading(true);
-    getPendingResidualKg(selectedPaint).then((val) => {
-      if (!cancelled) {
-        setPendingResidual(val);
-        setResidualLoading(false);
-      }
-    });
-    return () => { cancelled = true; };
-  }, [activeTab, selectedPaint, recentLogs]); // re-fetch after transactions refresh recentLogs
-
   const handleQtyChange = (value: number) => {
     if (isStockOut) {
       if (value >= 1) setQty(value);
+    } else if (isReceive) {
+      if (value >= 0) setQty(Math.round(value * 100) / 100);
     } else if (value >= 0.01) {
       setQty(Math.round(value * 100) / 100);
     }
@@ -119,17 +102,7 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
       return;
     }
 
-    // Terima Sisa: pre-validate against pending residual
-    if (activeTab === "receive") {
-      if (pendingResidual !== null && pendingResidual <= 0) {
-        toast.error("Tidak ada sisa cat dari gudang yang belum dicatat");
-        return;
-      }
-      if (pendingResidual !== null && qty > pendingResidual) {
-        toast.error(`Berat sisa melebihi cat keluar gudang. Maksimal: ${pendingResidual.toFixed(2)} kg`);
-        return;
-      }
-    }
+    // Terima Sisa: no special pre-validation — just record the residual amount
 
     // Both "use" and "dispose" reduce sideroom stock — show confirmation
     validateAndProceed({
@@ -145,7 +118,7 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
       if (activeTab === "stockout") {
         return createStockOut({ paint_item_id: selectedPaint, qty, notes: notes || undefined });
       } else if (activeTab === "receive") {
-        return createSideroomIn({ paint_item_id: selectedPaint, qty, notes: notes || undefined });
+        return createResidualReturn({ paint_item_id: selectedPaint, qty, notes: notes || undefined });
       } else if (activeTab === "use") {
         return createSideroomUse({ paint_item_id: selectedPaint, qty, notes: notes || undefined });
       }
@@ -323,42 +296,9 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
                     {weightPerCan} kg / kaleng
                   </span>
                 )}
-                {/* Pending residual badge - only in receive tab */}
-                {isReceive && selectedPaint && (
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium ${
-                    residualLoading
-                      ? "bg-slate-50 border border-slate-200 text-slate-500"
-                      : (pendingResidual !== null && pendingResidual > 0)
-                        ? "bg-green-50 border border-green-200 text-green-800"
-                        : "bg-red-50 border border-red-200 text-red-700"
-                  }`}>
-                    <span className={`w-2 h-2 rounded-full ${
-                      residualLoading
-                        ? "bg-slate-300"
-                        : (pendingResidual !== null && pendingResidual > 0) ? "bg-green-400" : "bg-red-400"
-                    }`} aria-hidden="true" />
-                    {residualLoading
-                      ? "Memuat..."
-                      : `Sisa belum dicatat: ${pendingResidual?.toFixed(2) ?? 0} kg`
-                    }
-                  </span>
-                )}
               </div>
             )}
           </PaintSelect>
-
-          {/* Warning when no pending residual to receive */}
-          {isReceive && selectedPaint && !residualLoading && pendingResidual !== null && pendingResidual <= 0 && (
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200">
-              <AlertTriangle className="size-5 text-red-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
-              <div>
-                <p className="text-sm font-semibold text-red-800">Tidak ada sisa cat yang belum dicatat</p>
-                <p className="text-xs text-red-600 mt-0.5">
-                  Semua cat yang keluar dari gudang sudah diterima di sideroom. Catat Stock Out terlebih dahulu.
-                </p>
-              </div>
-            </div>
-          )}
 
           <div className="space-y-1.5">
             <QtyStepper
@@ -367,10 +307,10 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
               onChange={handleQtyChange}
               onQuickSelect={setQty}
               step={isStockOut ? 1 : 0.5}
-              min={isStockOut ? 1 : 0.01}
+              min={isStockOut ? 1 : isReceive ? 0 : 0.01}
               decimals={isStockOut ? 0 : 2}
               disabled={isLoading}
-              quickValues={isStockOut ? QUICK_CANS : QUICK_KG}
+              quickValues={isStockOut ? QUICK_CANS : isReceive ? QUICK_RECEIVE : QUICK_KG}
               quickSuffix={isStockOut ? "" : " kg"}
               inlineUnit={isStockOut ? undefined : "kg"}
               unitLabel={isStockOut ? "kaleng" : "kg"}
@@ -427,7 +367,7 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
 
       {/* Recent Activity */}
       <div className="md:col-span-1">
-        <ActivityFeed logs={recentLogs} pageSize={5} filterTypes={["STOCK_OUT", "SIDEROOM_IN", "SIDEROOM_USE", "DISPOSE", "PAINT_CONSUMED"]} />
+        <ActivityFeed logs={recentLogs} pageSize={5} filterTypes={["STOCK_OUT", "SIDEROOM_RECEIVE", "RESIDUAL_RETURN", "SIDEROOM_USE", "DISPOSE", "PAINT_CONSUMED"]} />
       </div>
 
       </div>

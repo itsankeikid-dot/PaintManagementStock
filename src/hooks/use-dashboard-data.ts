@@ -7,6 +7,7 @@ import { getLogEntries } from "@/actions/transactions";
 import { createClient } from "@/lib/supabase/client";
 import { DEFAULT_LOW_STOCK_THRESHOLD } from "@/lib/constants";
 import type { Stock, PaintItem, Log, User } from "@/types/database";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type RealtimeStatus = "connecting" | "connected" | "disconnected";
 
@@ -40,8 +41,11 @@ export function useDashboardData() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("connecting");
 
-  // Debounce ref — avoid hammering server when multiple DB events fire at once
+  // Stable refs to avoid effect re-runs
   const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const supabaseRef = useRef<SupabaseClient | null>(null);
+  const channelRef = useRef<ReturnType<SupabaseClient["channel"]> | null>(null);
+  const wasDisconnected = useRef(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -80,10 +84,15 @@ export function useDashboardData() {
     fetchData();
   }, [fetchData]);
 
-  // Supabase Realtime subscription
+  // Supabase Realtime subscription — only runs once on mount
   useEffect(() => {
-    const supabase = createClient();
+    // Create client once and store in ref
+    if (!supabaseRef.current) {
+      supabaseRef.current = createClient();
+    }
+    const supabase = supabaseRef.current;
 
+    // Create channel once
     const channel = supabase
       .channel("dashboard-realtime")
       // Listen to stock table changes
@@ -99,16 +108,32 @@ export function useDashboardData() {
         () => { debouncedFetch(); }
       )
       .subscribe((status) => {
-        if (status === "SUBSCRIBED") setRealtimeStatus("connected");
-        else if (status === "CLOSED" || status === "CHANNEL_ERROR") setRealtimeStatus("disconnected");
-        else setRealtimeStatus("connecting");
+        if (status === "SUBSCRIBED") {
+          setRealtimeStatus("connected");
+          // If we were previously disconnected, refresh data on reconnect
+          if (wasDisconnected.current) {
+            wasDisconnected.current = false;
+            fetchData();
+          }
+        } else if (status === "CLOSED" || status === "CHANNEL_ERROR") {
+          setRealtimeStatus("disconnected");
+          wasDisconnected.current = true;
+        } else {
+          setRealtimeStatus("connecting");
+        }
       });
+
+    channelRef.current = channel;
 
     return () => {
       if (refetchTimer.current) clearTimeout(refetchTimer.current);
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
-  }, [debouncedFetch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps — subscription only created once on mount
 
   const refresh = useCallback(() => {
     setIsRefreshing(true);

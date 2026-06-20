@@ -6,7 +6,7 @@
  */
 
 /** Possible log transaction types */
-export type LogType = "STOCK_IN" | "STOCK_OUT" | "SIDEROOM_IN" | "DISPOSE" | "SIDEROOM_USE" | "PAINT_CONSUMED";
+export type LogType = "STOCK_IN" | "STOCK_OUT" | "RESIDUAL_RETURN" | "DISPOSE" | "SIDEROOM_USE" | "PAINT_CONSUMED" | "SIDEROOM_RECEIVE";
 
 /** User roles determining access level */
 export type UserRole = "warehouse" | "sideroom" | "admin" | "office";

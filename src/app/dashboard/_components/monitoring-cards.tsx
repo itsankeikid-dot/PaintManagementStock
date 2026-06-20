@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +11,7 @@ import {
   RefreshCw,
   Wifi,
   WifiOff,
+  Info,
 } from "lucide-react";
 import type { RealtimeStatus } from "@/hooks/use-dashboard-data";
 
@@ -26,6 +30,67 @@ interface MonitoringCardsProps {
   onRefresh: () => void;
 }
 
+function InfoTooltip({ text, label }: { text: string; label: string }) {
+  const [open, setOpen] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const show = useCallback(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setOpen(true);
+  }, []);
+
+  const hide = useCallback(() => {
+    timeoutRef.current = setTimeout(() => setOpen(false), 150);
+  }, []);
+
+  // Close on scroll
+  useEffect(() => {
+    if (!open) return;
+    const onScroll = () => setOpen(false);
+    window.addEventListener("scroll", onScroll, true);
+    return () => window.removeEventListener("scroll", onScroll, true);
+  }, [open]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative inline-flex"
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocus={show}
+      onBlur={hide}
+    >
+      <button
+        className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+        aria-label={`Info ${label}`}
+        onClick={() => setOpen((v) => !v)}
+        tabIndex={0}
+      >
+        <Info className="size-3.5" />
+      </button>
+      {open && (
+        <div
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 rounded-xl border border-[#E2E8F0] bg-white p-3 text-xs text-slate-600 shadow-lg shadow-slate-200/50 z-50 animate-in fade-in-0 zoom-in-95"
+          role="tooltip"
+          onMouseEnter={show}
+          onMouseLeave={hide}
+        >
+          {text}
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-px">
+            <div className="w-2 h-2 rotate-45 border-l border-t border-[#E2E8F0] bg-white" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function MonitoringCards({
   stats,
   realtimeStatus,
@@ -34,10 +99,10 @@ export function MonitoringCards({
   onRefresh,
 }: MonitoringCardsProps) {
   const cards = [
-    { label: "Paint Types", value: String(stats.totalItems), icon: Palette },
-    { label: "Warehouse Stock", value: `${stats.totalWarehouseStock.toFixed(1)} kg`, icon: Warehouse },
-    { label: "Sideroom Stock", value: `${stats.totalSideroomStock.toFixed(1)} kg`, icon: FlaskConical },
-    { label: "Today Activity", value: String(stats.todayTransactions), icon: Activity },
+    { label: "Paint Types", value: String(stats.totalItems), icon: Palette, tooltip: "Jumlah jenis cat yang terdaftar di sistem (aktif dan nonaktif)." },
+    { label: "Warehouse Stock", value: `${stats.totalWarehouseStock.toFixed(1)} kg`, icon: Warehouse, tooltip: "Total stok cat di gudang utama. Stok masuk dicatat oleh operator warehouse." },
+    { label: "Sideroom Stock", value: `${stats.totalSideroomStock.toFixed(1)} kg`, icon: FlaskConical, tooltip: "Total stok cat di ruang cat (sideroom). Stok diambil dari gudang oleh operator sideroom." },
+    { label: "Today Activity", value: String(stats.todayTransactions), icon: Activity, tooltip: "Jumlah transaksi yang tercatat hari ini (stock in, stock out, pemakaian, pembuangan)." },
   ];
 
   return (
@@ -66,7 +131,17 @@ export function MonitoringCards({
             ) : realtimeStatus === "connecting" ? (
               <><RefreshCw className="size-3 animate-spin" />Connecting...</>
             ) : (
-              <><WifiOff className="size-3" />Disconnected</>
+              <>
+                <WifiOff className="size-3" />
+                Disconnected
+                <button
+                  onClick={onRefresh}
+                  disabled={isRefreshing}
+                  className="ml-1 text-xs font-semibold text-red-700 hover:text-red-900 underline underline-offset-2 cursor-pointer disabled:opacity-50"
+                >
+                  Reconnect
+                </button>
+              </>
             )}
           </span>
 
@@ -98,8 +173,11 @@ export function MonitoringCards({
             >
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-base font-medium text-slate-900">{card.label}</p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-base font-medium text-slate-900">{card.label}</p>
+                      <InfoTooltip text={card.tooltip} label={card.label} />
+                    </div>
                     <p className="mt-1 text-4xl font-semibold tracking-tight text-blue-600">
                       {card.value}
                     </p>

@@ -22,9 +22,16 @@ export function LowStockTable({ lowStock }: LowStockTableProps) {
 
   return (
     <section className="space-y-3">
-      <h3 className="text-2xl font-semibold tracking-tight text-slate-900">
-        Stok Rendah
-      </h3>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h3 className="text-2xl font-semibold tracking-tight text-slate-900">
+            Stok Rendah
+          </h3>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Item dengan total stok ≤ {DEFAULT_LOW_STOCK_THRESHOLD} kg perlu segera di-restock
+          </p>
+        </div>
+      </div>
       <Card className="overflow-hidden border-rose-200 bg-white shadow-sm">
         <CardHeader className="border-b border-rose-100 pb-4 bg-rose-50/60">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -34,10 +41,10 @@ export function LowStockTable({ lowStock }: LowStockTableProps) {
               </div>
               <div>
                 <CardTitle className="text-base font-semibold text-rose-900">
-                  {lowStock.length} item di bawah batas minimum
+                  {lowStock.length} item perlu perhatian
                 </CardTitle>
                 <p className="text-xs text-rose-600 mt-0.5">
-                  Threshold: &le; {DEFAULT_LOW_STOCK_THRESHOLD} kg total
+                  Di bawah batas minimum ({DEFAULT_LOW_STOCK_THRESHOLD} kg)
                 </p>
               </div>
             </div>

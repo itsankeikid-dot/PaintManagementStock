@@ -11,7 +11,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ENUMS
 -- ============================================================
 
-CREATE TYPE log_type AS ENUM ('STOCK_IN', 'STOCK_OUT', 'SIDEROOM_IN', 'DISPOSE', 'SIDEROOM_USE', 'PAINT_CONSUMED');
+CREATE TYPE log_type AS ENUM ('STOCK_IN', 'STOCK_OUT', 'RESIDUAL_RETURN', 'DISPOSE', 'SIDEROOM_USE', 'PAINT_CONSUMED', 'SIDEROOM_RECEIVE');
 CREATE TYPE user_role AS ENUM ('warehouse', 'sideroom', 'admin', 'office');
 
 -- ============================================================
@@ -56,16 +56,17 @@ CREATE TABLE stock (
 );
 
 -- Log table - records every stock movement
--- Types: STOCK_IN (new arrival), STOCK_OUT (sent to painting),
---        SIDEROOM_IN (leftover from painting), DISPOSE (thrown away),
+-- Types: STOCK_IN (new arrival at warehouse), STOCK_OUT (sent to painting),
+--        SIDEROOM_RECEIVE (auto-logged: paint arrives at sideroom from STOCK_OUT),
+--        RESIDUAL_RETURN (leftover from painting), DISPOSE (thrown away),
 --        SIDEROOM_USE (used/consumed from sideroom stock),
---        PAINT_CONSUMED (auto-logged: paint consumed during painting = STOCK_OUT − SIDEROOM_IN)
+--        PAINT_CONSUMED (auto-logged: paint consumed during painting = STOCK_OUT − RESIDUAL_RETURN)
 CREATE TABLE log (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   paint_item_id UUID NOT NULL REFERENCES paint_items(id) ON DELETE CASCADE,
   user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   type log_type NOT NULL,
-  qty NUMERIC(10,2) NOT NULL CHECK (qty > 0),
+  qty NUMERIC(10,2) NOT NULL CHECK (qty >= 0),  -- qty = 0 allowed for RESIDUAL_RETURN (all consumed)
   notes TEXT,
   condition TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

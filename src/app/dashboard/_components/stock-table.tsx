@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Palette, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
+import { Palette, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, Search, X } from "lucide-react";
 import { DEFAULT_LOW_STOCK_THRESHOLD } from "@/lib/constants";
 import { formatStockSideroom } from "@/lib/format-utils";
 import type { Stock, PaintItem } from "@/types/database";
@@ -79,12 +79,24 @@ export function StockTable({ stockData }: StockTableProps) {
       <CardHeader className="space-y-3 border-b border-slate-100 pb-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle className="text-base font-semibold text-slate-900">Stok Keseluruhan</CardTitle>
-          <Input
-            placeholder="Cari cat..."
-            value={searchTerm}
-            onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-            className="h-10 w-full max-w-sm bg-slate-50"
-          />
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" aria-hidden="true" />
+            <Input
+              placeholder="Cari cat..."
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+              className="h-10 pl-9 pr-9 bg-slate-50"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => { setSearchTerm(""); setPage(1); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center hover:bg-slate-300 transition-colors cursor-pointer"
+                aria-label="Hapus pencarian"
+              >
+                <X className="size-3.5 text-slate-600" />
+              </button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-0">

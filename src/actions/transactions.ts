@@ -5,14 +5,15 @@ import { getSession } from "@/lib/session";
 import type { Log, LogType, PaintItem, User } from "@/types/database";
 
 /** Role-based access control for transaction types (roles are lowercase from DB)
- *  PAINT_CONSUMED is system-generated — no user role can trigger it manually. */
+ *  PAINT_CONSUMED and SIDEROOM_RECEIVE are system-generated — no user role can trigger them manually. */
 const ALLOWED_ROLES: Record<LogType, string[]> = {
   STOCK_IN: ["admin", "warehouse"],
   STOCK_OUT: ["admin", "sideroom"],
-  SIDEROOM_IN: ["admin", "sideroom"],
+  RESIDUAL_RETURN: ["admin", "sideroom"],
   SIDEROOM_USE: ["admin", "sideroom"],
   DISPOSE: ["admin", "sideroom"],
-  PAINT_CONSUMED: [], // system-generated only
+  PAINT_CONSUMED: [],    // system-generated only
+  SIDEROOM_RECEIVE: [],  // system-generated only
 };
 
 /**
@@ -20,7 +21,7 @@ const ALLOWED_ROLES: Record<LogType, string[]> = {
  * This is the core transaction function used by all stock movements.
  *
  * @param paintItemId - UUID of the paint item
- * @param type - Log type (STOCK_IN, STOCK_OUT, SIDEROOM_IN, DISPOSE)
+ * @param type - Log type (STOCK_IN, STOCK_OUT, RESIDUAL_RETURN, DISPOSE)
  * @param qty - Quantity (must be > 0)
  * @param notes - Optional notes
  * @returns Success status with optional error
@@ -46,8 +47,8 @@ async function createTransaction(
     return { success: false, error: `Not authorized for this action` };
   }
 
-  // Validate inputs
-  if (!paintItemId || qty <= 0) {
+  // Validate inputs — RESIDUAL_RETURN allows qty = 0 (all paint consumed, nothing returned)
+  if (!paintItemId || qty < 0 || (qty === 0 && type !== "RESIDUAL_RETURN")) {
     return { success: false, error: "Invalid quantity or paint item" };
   }
 
@@ -89,22 +90,19 @@ async function createTransaction(
     return { success: false, error: `Insufficient sideroom stock (available: ${stock.stock_sideroom} kg)` };
   }
 
-  // SIDEROOM_IN validation: residual received cannot exceed what left the
-  // warehouse and hasn't yet been accounted for.
-  // pending_residual = total_stock_out - total_sideroom_in - total_paint_consumed
-  // DISPOSE and SIDEROOM_USE operate on already-received sideroom stock,
-  // so they do NOT affect the pending residual (avoiding double-counting).
-  // The difference (pendingResidual - storedQty) is auto-logged as PAINT_CONSUMED.
-  let consumedQty = 0; // set when type === SIDEROOM_IN
-  if (type === "SIDEROOM_IN") {
+  // RESIDUAL_RETURN: records how much residual paint came back after painting.
+  // consumedQty = total_out - total_accounted - storedQty (the portion used up).
+  // Capped at 0 so stock_sideroom never increases from this operation.
+  let consumedQty = 0; // set when type === RESIDUAL_RETURN
+  if (type === "RESIDUAL_RETURN") {
     const { data: logs } = await supabase
       .from("log")
       .select("type, qty")
       .eq("paint_item_id", paintItemId)
-      .in("type", ["STOCK_OUT", "SIDEROOM_IN", "PAINT_CONSUMED"]);
+      .in("type", ["STOCK_OUT", "RESIDUAL_RETURN", "PAINT_CONSUMED"]);
 
     let totalOut = 0;
-    let totalAccounted = 0; // sideroom_in + paint_consumed
+    let totalAccounted = 0; // residual_return + paint_consumed
 
     for (const log of logs || []) {
       const q = Number(log.qty) || 0;
@@ -112,7 +110,7 @@ async function createTransaction(
         case "STOCK_OUT":
           totalOut += q;
           break;
-        case "SIDEROOM_IN":
+        case "RESIDUAL_RETURN":
         case "PAINT_CONSUMED":
           totalAccounted += q;
           break;
@@ -120,13 +118,6 @@ async function createTransaction(
     }
 
     const pendingResidual = totalOut - totalAccounted;
-
-    if (pendingResidual <= 0) {
-      return {
-        success: false,
-        error: "Tidak ada sisa cat dari gudang yang belum dicatat. Semua cat keluar sudah diterima di sideroom.",
-      };
-    }
 
     if (storedQty > pendingResidual) {
       return {
@@ -136,7 +127,7 @@ async function createTransaction(
     }
 
     // The portion not returned as residual is consumed during painting
-    consumedQty = pendingResidual - storedQty;
+    consumedQty = Math.max(0, pendingResidual - storedQty);
 
     // Guard: receiving the residual subtracts consumedQty from the sideroom
     // balance. If paint was already used/disposed from the sideroom before the
@@ -180,7 +171,7 @@ async function createTransaction(
         stock_sideroom: stock.stock_sideroom + storedQty,
       };
       break;
-    case "SIDEROOM_IN":
+    case "RESIDUAL_RETURN":
       // The full STOCK_OUT qty already entered the sideroom balance.
       // Receiving the residual only confirms how much came back; the rest was
       // consumed during painting, so we DECREASE sideroom by the consumed kg.
@@ -205,11 +196,30 @@ async function createTransaction(
     return { success: false, error: stockError.message };
   }
 
-  // Auto-log PAINT_CONSUMED after a successful SIDEROOM_IN.
+  // Auto-log SIDEROOM_RECEIVE after a successful STOCK_OUT.
+  // STOCK_OUT moves paint from warehouse → sideroom. The stock update is
+  // already done above; this extra log records the sideroom arrival so the
+  // activity feed shows both sides of the transfer.
+  if (type === "STOCK_OUT") {
+    const { error: sideInError } = await supabase.from("log").insert({
+      paint_item_id: paintItemId,
+      user_id: session.userId,
+      type: "SIDEROOM_RECEIVE",
+      qty: storedQty,
+      notes: `Auto-logged: ${storedQty.toFixed(2)} kg diterima di sideroom dari Stock Out`,
+      condition: null,
+    });
+
+    if (sideInError) {
+      console.error("Error creating SIDEROOM_RECEIVE log (non-fatal):", sideInError);
+    }
+  }
+
+  // Auto-log PAINT_CONSUMED after a successful RESIDUAL_RETURN.
   // consumedQty = pending_residual - received_qty (set above during validation).
   // This records the paint that was consumed (used up) during the painting
   // process and will not return to the sideroom as residual.
-  if (type === "SIDEROOM_IN" && consumedQty > 0) {
+  if (type === "RESIDUAL_RETURN" && consumedQty > 0) {
     const { error: consumedError } = await supabase.from("log").insert({
       paint_item_id: paintItemId,
       user_id: session.userId,
@@ -256,14 +266,14 @@ export async function createStockOut(data: {
 
 /**
  * Records leftover paint received in sideroom from painting.
- * Effect: SIDEROOM_IN log + stock_sideroom increases.
+ * Effect: RESIDUAL_RETURN log + stock_sideroom adjusted.
  */
-export async function createSideroomIn(data: {
+export async function createResidualReturn(data: {
   paint_item_id: string;
   qty: number;
   notes?: string;
 }): Promise<{ success: boolean; error?: string }> {
-  return createTransaction(data.paint_item_id, "SIDEROOM_IN", data.qty, data.notes);
+  return createTransaction(data.paint_item_id, "RESIDUAL_RETURN", data.qty, data.notes);
 }
 
 /**
@@ -310,7 +320,7 @@ export async function getPendingResidualKg(paintItemId: string): Promise<number>
     .from("log")
     .select("type, qty")
     .eq("paint_item_id", paintItemId)
-    .in("type", ["STOCK_OUT", "SIDEROOM_IN", "PAINT_CONSUMED"]);
+    .in("type", ["STOCK_OUT", "RESIDUAL_RETURN", "PAINT_CONSUMED"]);
 
   if (error || !logs) {
     console.error("Error fetching logs for pending residual:", error);
@@ -326,7 +336,7 @@ export async function getPendingResidualKg(paintItemId: string): Promise<number>
       case "STOCK_OUT":
         totalOut += q;
         break;
-      case "SIDEROOM_IN":
+      case "RESIDUAL_RETURN":
       case "PAINT_CONSUMED":
         totalAccounted += q;
         break;

@@ -196,7 +196,7 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
           </div>
         ) : (
           visibleLogs.map((log) => {
-            const isPositive = log.type === "STOCK_IN" || log.type === "SIDEROOM_IN";
+            const isPositive = log.type === "STOCK_IN" || log.type === "SIDEROOM_RECEIVE" || log.type === "RESIDUAL_RETURN";
             return (
               <div
                 key={log.id}

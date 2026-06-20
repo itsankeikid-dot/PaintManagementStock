@@ -30,7 +30,7 @@ export async function getDailyUsage(
     .select("type, qty, created_at")
     .gte("created_at", utcFrom)
     .lte("created_at", utcTo)
-    .in("type", ["STOCK_OUT", "SIDEROOM_USE", "DISPOSE", "PAINT_CONSUMED"]);
+    .in("type", ["STOCK_OUT", "DISPOSE", "PAINT_CONSUMED"]);
 
   if (paintItemId) {
     query = query.eq("paint_item_id", paintItemId);
@@ -62,7 +62,6 @@ export async function getDailyUsage(
       case "STOCK_OUT":
         current.issued += entry.qty;
         break;
-      case "SIDEROOM_USE":
       case "PAINT_CONSUMED":
         current.consumed += entry.qty;
         break;

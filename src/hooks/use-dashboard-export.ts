@@ -67,7 +67,7 @@ export function useDashboardExport(getActiveDateRange: () => DateRange | null) {
     setIsExportingUsage(true);
     try {
       const logs = await getLogsForExport(range.from, range.to);
-      const filtered = logs.filter((l) => ["STOCK_OUT", "SIDEROOM_USE", "DISPOSE", "PAINT_CONSUMED"].includes(l.type));
+      const filtered = logs.filter((l) => ["STOCK_OUT", "DISPOSE", "PAINT_CONSUMED"].includes(l.type));
       downloadCSV(
         `penggunaan-cat-${range.from}_${range.to}.csv`,
         CSV_HEADERS,
@@ -77,7 +77,7 @@ export function useDashboardExport(getActiveDateRange: () => DateRange | null) {
           info: [
             `Periode: ${formatRangeLabel(range.from, range.to)}`,
             `Total transaksi: ${filtered.length}`,
-            `Tipe: Dikeluarkan (Stock Out), Dipakai (Sideroom Use), Terpakai Proses (Consumed), Dibuang (Dispose)`,
+            `Tipe: Dikeluarkan (Stock Out), Terpakai Proses (Consumed), Dibuang (Dispose)`,
           ],
           summary: buildTypeSummary(filtered, 8),
           numericColumns: [4],

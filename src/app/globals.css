@@ -161,3 +161,16 @@
 .animate-fade-in-up {
   animation: fade-in-up 0.3s ease-out;
 }
+
+/* ── Delta badge: slide in, hold, then float up & fade out ── */
+@keyframes delta-show {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.9); }
+  12%  { opacity: 1; transform: translateY(0)   scale(1);   }
+  72%  { opacity: 1; transform: translateY(0)   scale(1);   }
+  100% { opacity: 0; transform: translateY(-10px) scale(0.95); }
+}
+
+.animate-delta {
+  animation: delta-show 2.5s ease-in-out forwards;
+}
+

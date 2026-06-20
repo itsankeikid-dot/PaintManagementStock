@@ -93,6 +93,7 @@ export default function DashboardPageClient({ role }: { role: UserRole }) {
             title="Riwayat Transaksi"
             searchable
             showTypeFilter
+            filterTypes={["STOCK_IN", "STOCK_OUT", "RESIDUAL_RETURN", "DISPOSE", "PAINT_CONSUMED", "SIDEROOM_RECEIVE"]}
             headerAction={
               <button
                 onClick={handleExportTransactions}

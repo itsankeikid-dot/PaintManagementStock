@@ -99,11 +99,39 @@ export function MonitoringCards({
   isRefreshing,
   onRefresh,
 }: MonitoringCardsProps) {
+  /* ── Delta badges: track stat changes, skip initial load ── */
+  const [deltas, setDeltas] = useState<Record<string, number>>({});
+  const prevStatsRef = useRef<DashboardStats | null>(null);
+  const isInitialRef = useRef(true);
+
+  useEffect(() => {
+    if (isInitialRef.current) {
+      isInitialRef.current = false;
+      prevStatsRef.current = stats;
+      return;
+    }
+    const prev = prevStatsRef.current;
+    prevStatsRef.current = stats;
+    if (!prev) return;
+
+    const newDeltas: Record<string, number> = {};
+    if (prev.totalItems !== stats.totalItems) newDeltas.totalItems = stats.totalItems - prev.totalItems;
+    if (prev.totalWarehouseStock !== stats.totalWarehouseStock) newDeltas.totalWarehouseStock = stats.totalWarehouseStock - prev.totalWarehouseStock;
+    if (prev.totalSideroomStock !== stats.totalSideroomStock) newDeltas.totalSideroomStock = stats.totalSideroomStock - prev.totalSideroomStock;
+    if (prev.todayTransactions !== stats.todayTransactions) newDeltas.todayTransactions = stats.todayTransactions - prev.todayTransactions;
+
+    if (Object.keys(newDeltas).length > 0) {
+      setDeltas(newDeltas);
+      const t = setTimeout(() => setDeltas({}), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [stats]);
+
   const cards = [
-    { label: "Paint Types", value: stats.totalItems, decimals: 0, suffix: "", icon: Palette, tooltip: "Jumlah jenis cat yang terdaftar di sistem (aktif dan nonaktif)." },
-    { label: "Warehouse Stock", value: stats.totalWarehouseStock, decimals: 1, suffix: " kg", icon: Warehouse, tooltip: "Total stok cat di gudang utama. Stok masuk dicatat oleh operator warehouse." },
-    { label: "Sideroom Stock", value: stats.totalSideroomStock, decimals: 1, suffix: " kg", icon: FlaskConical, tooltip: "Total stok cat di ruang cat (sideroom). Stok diambil dari gudang oleh operator sideroom." },
-    { label: "Today Activity", value: stats.todayTransactions, decimals: 0, suffix: "", icon: Activity, tooltip: "Jumlah transaksi yang tercatat hari ini (stock in, stock out, pemakaian, pembuangan)." },
+    { key: "totalItems", label: "Paint Types", value: stats.totalItems, decimals: 0, suffix: "", icon: Palette, tooltip: "Jumlah jenis cat yang terdaftar di sistem (aktif dan nonaktif)." },
+    { key: "totalWarehouseStock", label: "Warehouse Stock", value: stats.totalWarehouseStock, decimals: 1, suffix: " kg", icon: Warehouse, tooltip: "Total stok cat di gudang utama. Stok masuk dicatat oleh operator warehouse." },
+    { key: "totalSideroomStock", label: "Sideroom Stock", value: stats.totalSideroomStock, decimals: 1, suffix: " kg", icon: FlaskConical, tooltip: "Total stok cat di ruang cat (sideroom). Stok diambil dari gudang oleh operator sideroom." },
+    { key: "todayTransactions", label: "Today Activity", value: stats.todayTransactions, decimals: 0, suffix: "", icon: Activity, tooltip: "Jumlah transaksi yang tercatat hari ini (stock in, stock out, pemakaian, pembuangan)." },
   ];
 
   return (
@@ -167,10 +195,11 @@ export function MonitoringCards({
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon;
+          const delta = deltas[card.key];
           return (
             <Card
               key={card.label}
-              className="relative overflow-hidden border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+              className="relative border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
             >
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-3">
@@ -179,16 +208,31 @@ export function MonitoringCards({
                       <p className="text-base font-medium text-slate-900">{card.label}</p>
                       <InfoTooltip text={card.tooltip} label={card.label} />
                     </div>
-                    <p className="mt-1 text-4xl font-semibold tracking-tight text-blue-600">
-                      <AnimatedNumber
-                        value={card.value}
-                        decimals={card.decimals}
-                        duration={600}
-                      />
-                      {card.suffix && (
-                        <span className="text-2xl font-medium text-blue-400 ml-1">{card.suffix}</span>
+                    <div className="relative inline-block mt-1">
+                      <p className="text-4xl font-semibold tracking-tight text-blue-600">
+                        <AnimatedNumber
+                          value={card.value}
+                          decimals={card.decimals}
+                          duration={600}
+                        />
+                        {card.suffix && (
+                          <span className="text-2xl font-medium text-blue-400 ml-1">{card.suffix}</span>
+                        )}
+                      </p>
+                      {delta !== undefined && (
+                        <span
+                          key={`${card.key}-${delta}`}
+                          className={`animate-delta absolute left-full top-1/2 -translate-y-1/2 ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold tabular-nums whitespace-nowrap pointer-events-none ${
+                            delta > 0
+                              ? "bg-emerald-50 text-emerald-600"
+                              : "bg-red-50 text-red-500"
+                          }`}
+                        >
+                          {delta > 0 ? "+" : ""}{card.decimals > 0 ? delta.toFixed(card.decimals) : delta}
+                          {card.suffix}
+                        </span>
                       )}
-                    </p>
+                    </div>
                   </div>
                   <div className="rounded-full p-2 bg-slate-100 text-slate-500">
                     <Icon className="size-5 text-slate-400" />

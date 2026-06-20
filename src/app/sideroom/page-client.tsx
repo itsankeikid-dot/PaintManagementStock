@@ -367,7 +367,7 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
 
       {/* Recent Activity */}
       <div className="md:col-span-1">
-        <ActivityFeed logs={recentLogs} pageSize={5} filterTypes={["STOCK_OUT", "SIDEROOM_RECEIVE", "RESIDUAL_RETURN", "SIDEROOM_USE", "DISPOSE", "PAINT_CONSUMED"]} />
+        <ActivityFeed logs={recentLogs} pageSize={5} filterTypes={["STOCK_OUT", "SIDEROOM_RECEIVE", "RESIDUAL_RETURN", "DISPOSE", "PAINT_CONSUMED"]} />
       </div>
 
       </div>

@@ -10,8 +10,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, UserRound, Pencil, Search, Download } from "lucide-react";
-import { ROLE_LABELS } from "@/lib/constants";
+import { ROLE_LABELS } from "@/lib/role-config";
 import { Spinner } from "@/components/shared/spinner";
+import { PinIndicator } from "@/components/shared/pin-indicator";
+import { StatCard } from "@/components/shared/stat-card";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { useUsers, type Profile } from "@/hooks/use-users";
 import type { UserRole } from "@/types/database";
@@ -22,6 +24,14 @@ import { RoleSelect } from "./_components/role-select";
 interface UsersPageClientProps {
   initialProfiles: Profile[];
 }
+
+/** Common Tailwind class for toolbar outline buttons */
+const TOOLBAR_OUTLINE =
+  "inline-flex items-center gap-2 px-4 h-10 rounded-xl border border-[#E2E8F0] bg-white text-sm font-semibold text-[#475569] hover:bg-[#F8FAFC] shadow-sm transition-all duration-150 cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2";
+
+/** Common Tailwind class for toolbar primary buttons */
+const TOOLBAR_PRIMARY =
+  "inline-flex items-center gap-2 px-4 h-10 rounded-xl bg-[#0e7ad5] hover:bg-[#0065b8] text-white text-sm font-semibold shadow-sm shadow-blue-200 transition-all duration-150 cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2";
 
 /**
  * Admin page for managing users.
@@ -45,23 +55,13 @@ export default function UsersPageClient({ initialProfiles }: UsersPageClientProp
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={u.handleExportCSV}
-            className="inline-flex items-center gap-2 px-4 h-10 rounded-xl border border-[#E2E8F0] bg-white text-sm font-semibold text-[#475569] hover:bg-[#F8FAFC] shadow-sm transition-all duration-150 cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-          >
+          <button onClick={u.handleExportCSV} className={TOOLBAR_OUTLINE}>
             <Download className="size-4" aria-hidden="true" />
             Export CSV
           </button>
 
           <Dialog open={u.showAddDialog} onOpenChange={u.setShowAddDialog}>
-            <DialogTrigger
-              render={
-                <button className="inline-flex items-center gap-2 px-4 h-10 rounded-xl bg-[#0e7ad5] hover:bg-[#0065b8] text-white text-sm font-semibold shadow-sm shadow-blue-200 transition-all duration-150 cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
-                  <Plus className="size-4" aria-hidden="true" />
-                  Tambah User
-                </button>
-              }
-            />
+            <DialogTrigger render={<button className={TOOLBAR_PRIMARY}><Plus className="size-4" aria-hidden="true" />Tambah User</button>} />
             <DialogContent className="sm:max-w-md rounded-2xl">
               <DialogHeader>
                 <DialogTitle className="text-lg font-bold text-[#1e344a] flex items-center gap-2">
@@ -96,15 +96,7 @@ export default function UsersPageClient({ initialProfiles }: UsersPageClientProp
                     required
                     className="h-11 rounded-xl border-[#CBD5E1] font-mono tracking-[0.4em] text-lg"
                   />
-                  <div className="flex gap-2 pt-1">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className={`h-1.5 flex-1 rounded-full transition-colors duration-150 ${i < u.newUser.pin.length ? "bg-[#0e7ad5]" : "bg-[#E2E8F0]"}`}
-                        aria-hidden="true"
-                      />
-                    ))}
-                  </div>
+                  <PinIndicator length={u.newUser.pin.length} />
                 </div>
                 <div className="space-y-2">
                   <RoleSelect value={u.newUser.role} onChange={(v) => u.setNewUser({ ...u.newUser, role: v })} />
@@ -124,29 +116,24 @@ export default function UsersPageClient({ initialProfiles }: UsersPageClientProp
 
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {/* Total users card */}
-        <div className="flex items-center gap-3 p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-sm">
-          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-            <UserRound className="size-5 text-slate-500" aria-hidden="true" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-2xl font-bold text-[#1e344a] tabular-nums">{u.profiles.length}</p>
-            <p className="text-xs font-medium text-[#64748B]">Total User</p>
-          </div>
-        </div>
-        {/* Role-specific cards */}
+        <StatCard
+          icon={<UserRound className="size-5 text-slate-500" aria-hidden="true" />}
+          label="Total User"
+          value={u.profiles.length}
+        />
         {(["admin", "warehouse", "sideroom", "office"] as UserRole[]).map((role) => {
           const s = ROLE_STYLES[role];
           return (
-            <div key={role} className={`flex items-center gap-3 p-4 rounded-2xl border shadow-sm ${s.bg} ${s.border}`}>
-              <div className={`w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center shrink-0`}>
-                {ROLE_ICONS[role]}
-              </div>
-              <div className="min-w-0">
-                <p className={`text-2xl font-bold tabular-nums ${s.text}`}>{u.roleCounts[role] ?? 0}</p>
-                <p className={`text-xs font-medium ${s.text} opacity-75`}>{ROLE_LABELS[role]}</p>
-              </div>
-            </div>
+            <StatCard
+              key={role}
+              icon={ROLE_ICONS[role]}
+              label={ROLE_LABELS[role]}
+              value={u.roleCounts[role] ?? 0}
+              containerClass={`${s.bg} ${s.border}`}
+              iconBgClass="bg-white/60"
+              valueClass={s.text}
+              labelClass={`${s.text} opacity-75`}
+            />
           );
         })}
       </div>
@@ -200,17 +187,7 @@ export default function UsersPageClient({ initialProfiles }: UsersPageClientProp
                 placeholder="PIN baru (opsional)"
                 className="h-11 rounded-xl border-[#CBD5E1] font-mono tracking-[0.4em] text-lg"
               />
-              {u.editForm.pin && (
-                <div className="flex gap-2 pt-1">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`h-1.5 flex-1 rounded-full transition-colors duration-150 ${i < u.editForm.pin.length ? "bg-[#0e7ad5]" : "bg-[#E2E8F0]"}`}
-                      aria-hidden="true"
-                    />
-                  ))}
-                </div>
-              )}
+              {u.editForm.pin && <PinIndicator length={u.editForm.pin.length} />}
             </div>
             <div className="space-y-2">
               <RoleSelect value={u.editForm.role} onChange={(v) => u.setEditForm({ ...u.editForm, role: v })} />

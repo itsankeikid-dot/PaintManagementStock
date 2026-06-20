@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUserProfile } from "@/actions/auth";
-import { ROLE_DASHBOARD_ROUTES } from "@/lib/constants";
+import { ROLE_DASHBOARD_ROUTES } from "@/lib/role-config";
+import type { UserRole } from "@/types/database";
 import LoginPageClient from "./page-client";
 
 /**
@@ -13,7 +14,7 @@ export default async function LoginPage() {
   const profile = await getUserProfile();
 
   if (profile) {
-    redirect(ROLE_DASHBOARD_ROUTES[profile.role] || "/dashboard");
+    redirect(ROLE_DASHBOARD_ROUTES[profile.role as UserRole] || "/dashboard");
   }
 
   return <LoginPageClient />;

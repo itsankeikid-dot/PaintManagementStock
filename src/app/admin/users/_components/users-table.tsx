@@ -1,6 +1,6 @@
 import { Pagination } from "@/components/shared/pagination";
 import { UserRound, Search, Pencil, Trash2, Plus } from "lucide-react";
-import { ROLE_LABELS } from "@/lib/constants";
+import { ROLE_LABELS } from "@/lib/role-config";
 import { formatDateWIB } from "@/lib/date-utils";
 import { ROLE_STYLES, ROLE_ICONS } from "./role-display";
 import type { Profile } from "@/hooks/use-users";

@@ -1,5 +1,6 @@
 /**
  * Application-wide constants and configuration.
+ * Role-related config lives in `@/lib/role-config`.
  */
 
 /** Labels for log types displayed in the UI */
@@ -22,21 +23,6 @@ export const LOG_TYPE_COLORS: Record<string, string> = {
   PAINT_CONSUMED: "bg-orange-100 text-orange-800",
 };
 
-/** Role labels for display */
-export const ROLE_LABELS: Record<string, string> = {
-  warehouse: "Warehouse Operator",
-  sideroom: "Sideroom Operator",
-  admin: "Admin",
-  office: "Office",
-};
-
 /** Default low stock threshold — total stock (warehouse + sideroom) in kg. */
 export const DEFAULT_LOW_STOCK_THRESHOLD = 100;
 
-/** Dashboard routes per role */
-export const ROLE_DASHBOARD_ROUTES: Record<string, string> = {
-  warehouse: "/warehouse",
-  sideroom: "/sideroom",
-  admin: "/dashboard",
-  office: "/dashboard",
-};

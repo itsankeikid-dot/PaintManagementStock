@@ -70,6 +70,17 @@ export interface DailyUsage {
   wasted: number;
 }
 
+/** Aggregated dashboard statistics shown in monitoring cards */
+export interface DashboardStats {
+  totalItems: number;
+  totalWarehouseStock: number;
+  totalSideroomStock: number;
+  todayTransactions: number;
+}
+
+/** Supabase Realtime connection status */
+export type RealtimeStatus = "connecting" | "connected" | "disconnected";
+
 /**
  * Database type definition for Supabase typed client.
  * Maps table names to their row types.

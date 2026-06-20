@@ -1,25 +1,27 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { getLogEntries } from "@/actions/transactions";
 import { getStockLevels } from "@/actions/stock";
-import { createClient } from "@/lib/supabase/client";
+import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 import type { PaintItem, Stock, Log, User } from "@/types/database";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
 type ActionResult = { success: boolean; error?: string };
 
 interface UseTransactionFormOptions {
   /** Qty the form resets to after a successful transaction (1 for warehouse, etc.). */
   initialQty?: number;
+  /** Active paint items to search for selectedPaintItem lookup. */
+  paintItems: PaintItem[];
 }
 
 /**
  * Shared state + flow for the warehouse/sideroom transaction forms:
  * paint selection, qty, notes, confirm dialog, loading, and the recent
- * stock/activity feed. UI (units, tabs, extra fields) stays in the page;
- * this owns the duplicated fetch + execute-with-toast scaffolding.
+ * stock/activity feed. Also exposes computed selectedPaintItem/currentStock.
+ * UI (units, tabs, extra fields) stays in the page; this owns the
+ * duplicated fetch + execute-with-toast scaffolding.
  */
-export function useTransactionForm({ initialQty = 1 }: UseTransactionFormOptions = {}) {
+export function useTransactionForm({ initialQty = 1, paintItems }: UseTransactionFormOptions) {
   const [selectedPaint, setSelectedPaint] = useState("");
   const [qty, setQty] = useState(initialQty);
   const [notes, setNotes] = useState("");
@@ -37,58 +39,25 @@ export function useTransactionForm({ initialQty = 1 }: UseTransactionFormOptions
     setStockLevels(stocks);
   }, []);
 
-  // Stable refs for realtime subscription
-  const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const supabaseRef = useRef<SupabaseClient | null>(null);
-  const channelRef = useRef<ReturnType<SupabaseClient["channel"]> | null>(null);
-
-  // Debounced refetch — waits 300ms after last event
-  const debouncedFetch = useCallback(() => {
-    if (refetchTimer.current) clearTimeout(refetchTimer.current);
-    refetchTimer.current = setTimeout(() => {
-      fetchActivity();
-    }, 300);
-  }, [fetchActivity]);
-
+  // Initial data load
   useEffect(() => {
-    // Mount-time fetch. setState runs after the awaited fetch resolves,
-    // not synchronously in the effect body.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchActivity();
   }, [fetchActivity]);
 
   // Supabase Realtime subscription
-  useEffect(() => {
-    if (!supabaseRef.current) {
-      supabaseRef.current = createClient();
-    }
-    const supabase = supabaseRef.current;
+  useRealtimeSubscription({
+    channelName: "operator-realtime",
+    tables: [
+      { event: "*", table: "stock" },
+      { event: "INSERT", table: "log" },
+    ],
+    onChange: fetchActivity,
+  });
 
-    const channel = supabase
-      .channel("operator-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "stock" },
-        () => { debouncedFetch(); }
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "log" },
-        () => { debouncedFetch(); }
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-
-    return () => {
-      if (refetchTimer.current) clearTimeout(refetchTimer.current);
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Computed derived values
+  const selectedPaintItem = paintItems.find((p) => p.id === selectedPaint);
+  const currentStock = stockLevels.find((s) => s.paint_item_id === selectedPaint);
 
   const reset = useCallback(() => {
     setSelectedPaint("");
@@ -101,10 +70,6 @@ export function useTransactionForm({ initialQty = 1 }: UseTransactionFormOptions
    * is selected and qty is positive, then:
    * - if `needsConfirm`, checks `available` stock and opens the confirm dialog;
    * - otherwise runs `proceed` immediately.
-   *
-   * `available`/`insufficientMessage` are only consulted when `needsConfirm`.
-   * `compareQty` overrides the value checked against `available` (e.g. warehouse
-   * passes cans-converted-to-kg, since stock is tracked in kg); defaults to `qty`.
    */
   const validateAndProceed = useCallback(
     (opts: {
@@ -185,5 +150,7 @@ export function useTransactionForm({ initialQty = 1 }: UseTransactionFormOptions
     reset,
     execute,
     validateAndProceed,
+    selectedPaintItem,
+    currentStock,
   };
 }

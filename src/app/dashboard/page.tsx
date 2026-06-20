@@ -1,7 +1,8 @@
 import { getUserProfile } from "@/actions/auth";
-import { AppHeader } from "@/components/shared/app-header";
 import { redirect } from "next/navigation";
-import { ROLE_DASHBOARD_ROUTES } from "@/lib/constants";
+import { ROLE_DASHBOARD_ROUTES } from "@/lib/role-config";
+import { PageLayout } from "@/components/shared/page-layout";
+import type { UserRole } from "@/types/database";
 import DashboardPageClient from "./page-client";
 
 /**
@@ -12,20 +13,14 @@ export default async function DashboardPage() {
   const profile = await getUserProfile();
 
   if (!profile) redirect("/login");
-  if (profile.role !== "admin" && profile.role !== "office") {
-    redirect(ROLE_DASHBOARD_ROUTES[profile.role] || "/login");
+  const role = profile.role as UserRole;
+  if (role !== "admin" && role !== "office") {
+    redirect(ROLE_DASHBOARD_ROUTES[role] || "/login");
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <AppHeader
-        userName={profile.name}
-        userRole={profile.role}
-        title="Dashboard"
-      />
-      <main className="container mx-auto px-4 py-6">
-        <DashboardPageClient role={profile.role} />
-      </main>
-    </div>
+    <PageLayout userName={profile.name} userRole={role} title="Dashboard">
+      <DashboardPageClient role={role} />
+    </PageLayout>
   );
 }

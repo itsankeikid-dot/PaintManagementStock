@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { LOG_TYPE_COLORS, LOG_TYPE_LABELS } from "@/lib/constants";
 import { formatDateTimeWIB } from "@/lib/date-utils";
 import { formatQty } from "@/lib/format-utils";
+import { usePaginatedSearch } from "@/hooks/use-paginated-search";
 import type { Log, LogType, PaintItem, User } from "@/types/database";
 import { ClipboardList, ChevronLeft, ChevronRight, Search, X, Filter } from "lucide-react";
 
@@ -26,10 +27,10 @@ interface ActivityFeedProps {
 
 /**
  * Reusable paginated activity feed with optional search and type filtering.
+ * Uses `usePaginatedSearch` for filter + pagination logic.
  * Used on Warehouse, Sideroom, and Dashboard pages.
  */
 export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", headerAction, searchable = false, showTypeFilter = false, filterTypes }: ActivityFeedProps) {
-  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [activeTypes, setActiveTypes] = useState<Set<LogType>>(new Set());
   const [newLogIds, setNewLogIds] = useState<Set<string>>(new Set());
@@ -40,7 +41,6 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
     if (logs.length === 0) return;
     const currentFirstId = logs[0].id;
     if (prevFirstIdRef.current !== null && prevFirstIdRef.current !== currentFirstId) {
-      // Find all new log IDs that appeared before the previous first
       const prevFirstIdx = logs.findIndex((l) => l.id === prevFirstIdRef.current);
       if (prevFirstIdx > 0) {
         const ids = new Set(logs.slice(0, prevFirstIdx).map((l) => l.id));
@@ -62,31 +62,28 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
     setPage(1);
   };
 
-  // Filter logs by type restriction, search + type chips
-  const filteredLogs = useMemo(() => {
-    let result = logs;
-    // Apply type restriction first (hard filter)
-    if (filterTypes && filterTypes.length > 0) {
-      result = result.filter((log) => filterTypes.includes(log.type as LogType));
-    }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (log) =>
-          log.paint_items?.name?.toLowerCase().includes(q) ||
-          log.paint_items?.color_code?.toLowerCase().includes(q)
-      );
-    }
-    if (activeTypes.size > 0) {
-      result = result.filter((log) => activeTypes.has(log.type as LogType));
-    }
-    return result;
-  }, [logs, filterTypes, search, activeTypes]);
+  // Pre-filter by type restriction (hard filter before usePaginatedSearch)
+  const restrictedLogs = useMemo(() => {
+    if (!filterTypes || filterTypes.length === 0) return logs;
+    return logs.filter((log) => filterTypes.includes(log.type as LogType));
+  }, [logs, filterTypes]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const start = (safePage - 1) * pageSize;
-  const visibleLogs = filteredLogs.slice(start, start + pageSize);
+  const { filtered: filteredLogs, paginated: visibleLogs, page, totalPages, setPage, rangeLabel } =
+    usePaginatedSearch({
+      items: restrictedLogs,
+      pageSize,
+      filterFn: (log) => {
+        if (search.trim()) {
+          const q = search.toLowerCase();
+          const matchesSearch =
+            log.paint_items?.name?.toLowerCase().includes(q) ||
+            log.paint_items?.color_code?.toLowerCase().includes(q);
+          if (!matchesSearch) return false;
+        }
+        if (activeTypes.size > 0 && !activeTypes.has(log.type as LogType)) return false;
+        return true;
+      },
+    });
 
   return (
     <div className="bg-white rounded-2xl border-2 border-[#E2E8F0] shadow-sm overflow-hidden">
@@ -102,9 +99,9 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
           {headerAction}
           {filteredLogs.length > 0 && (
             <span className="text-xs text-[#94A3B8]">
-              {start + 1}–{Math.min(start + pageSize, filteredLogs.length)} dari {filteredLogs.length}
-              {filteredLogs.length < logs.length && (
-                <span className="text-[#64748B]"> (dari {logs.length} total)</span>
+              {rangeLabel}
+              {filteredLogs.length < restrictedLogs.length && (
+                <span className="text-[#64748B]"> (dari {restrictedLogs.length} total)</span>
               )}
             </span>
           )}
@@ -112,7 +109,7 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
       </div>
 
       {/* Filter bar: search + type chips */}
-      {(searchable || showTypeFilter) && logs.length > 0 && (
+      {(searchable || showTypeFilter) && restrictedLogs.length > 0 && (
         <div className="px-5 py-4 border-b border-[#E2E8F0] bg-gradient-to-b from-[#F8FAFC] to-white space-y-3">
           {searchable && (
             <div className="relative group">
@@ -186,7 +183,7 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
       <div className="divide-y divide-[#F8FAFC]">
         {filteredLogs.length === 0 ? (
           <div className="text-center py-12 px-5">
-            {logs.length === 0 ? (
+            {restrictedLogs.length === 0 ? (
               <div className="space-y-2">
                 <div className="w-12 h-12 rounded-full bg-[#F8FAFC] flex items-center justify-center mx-auto">
                   <ClipboardList className="size-6 text-[#CBD5E1]" aria-hidden="true" />
@@ -258,8 +255,8 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-5 py-3 border-t border-[#F1F5F9] bg-[#FAFBFC]">
           <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={safePage === 1}
+            onClick={() => setPage(Math.max(1, page - 1))}
+            disabled={page === 1}
             aria-label="Halaman sebelumnya"
             className="w-8 h-8 rounded-lg border border-[#E2E8F0] bg-white flex items-center justify-center text-[#475569] hover:bg-[#F1F5F9] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7ad5]"
           >
@@ -270,12 +267,10 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
           <div className="flex items-center gap-1">
             {Array.from({ length: totalPages }).map((_, i) => {
               const p = i + 1;
-              const isActive = p === safePage;
-              // Show: first, last, current, and neighbours of current
-              const show = p === 1 || p === totalPages || Math.abs(p - safePage) <= 1;
-              // Show ellipsis
-              const showEllipsisBefore = p === safePage - 2 && safePage > 3;
-              const showEllipsisAfter = p === safePage + 2 && safePage < totalPages - 2;
+              const isActive = p === page;
+              const show = p === 1 || p === totalPages || Math.abs(p - page) <= 1;
+              const showEllipsisBefore = p === page - 2 && page > 3;
+              const showEllipsisAfter = p === page + 2 && page < totalPages - 2;
 
               if (showEllipsisBefore || showEllipsisAfter) {
                 return <span key={p} className="text-[#94A3B8] text-xs px-1">…</span>;
@@ -301,8 +296,8 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
           </div>
 
           <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={safePage === totalPages}
+            onClick={() => setPage(Math.min(totalPages, page + 1))}
+            disabled={page === totalPages}
             aria-label="Halaman berikutnya"
             className="w-8 h-8 rounded-lg border border-[#E2E8F0] bg-white flex items-center justify-center text-[#475569] hover:bg-[#F1F5F9] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7ad5]"
           >

@@ -14,14 +14,7 @@ import {
   WifiOff,
   Info,
 } from "lucide-react";
-import type { RealtimeStatus } from "@/hooks/use-dashboard-data";
-
-interface DashboardStats {
-  totalItems: number;
-  totalWarehouseStock: number;
-  totalSideroomStock: number;
-  todayTransactions: number;
-}
+import type { DashboardStats, RealtimeStatus } from "@/types/database";
 
 interface MonitoringCardsProps {
   stats: DashboardStats;

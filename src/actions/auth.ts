@@ -3,7 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSession, destroySession, getSession } from "@/lib/session";
 import type { UserRole } from "@/types/database";
-import { ROLE_DASHBOARD_ROUTES } from "@/lib/constants";
+import { ROLE_DASHBOARD_ROUTES } from "@/lib/role-config";
 import bcrypt from "bcryptjs";
 
 /* ── Rate limiter ── */
@@ -119,7 +119,7 @@ export async function loginWithPin(pin: string): Promise<{
       role: matchedUser.role,
     });
 
-    const redirectTo = ROLE_DASHBOARD_ROUTES[matchedUser.role] || "/dashboard";
+    const redirectTo = ROLE_DASHBOARD_ROUTES[matchedUser.role as UserRole] || "/dashboard";
     return { success: true, role: matchedUser.role as UserRole, redirectTo };
   } catch (error) {
     console.error("Login error:", error);

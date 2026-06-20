@@ -2,7 +2,3 @@
 export function formatQty(qty: number): string {
   return `${Number(qty).toFixed(2)} kg`;
 }
-
-export function formatStockSideroom(qty: number): string {
-  return `${Number(qty).toFixed(2)} kg`;
-}

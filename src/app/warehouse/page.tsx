@@ -1,7 +1,6 @@
-import { getUserProfile } from "@/actions/auth";
 import { getPaintItems } from "@/actions/paint-items";
-import { AppHeader } from "@/components/shared/app-header";
-import { redirect } from "next/navigation";
+import { requireRole } from "@/lib/auth-guard";
+import { PageLayout } from "@/components/shared/page-layout";
 import WarehousePageClient from "./page-client";
 
 /**
@@ -9,25 +8,13 @@ import WarehousePageClient from "./page-client";
  * Fetches data and renders the warehouse operator interface.
  */
 export default async function WarehousePage() {
-  const profile = await getUserProfile();
-
-  if (!profile) redirect("/login");
-  if (profile.role !== "warehouse" && profile.role !== "admin") {
-    redirect("/login");
-  }
+  const profile = await requireRole("warehouse", "admin");
 
   const paintItems = await getPaintItems(true);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      <AppHeader
-        userName={profile.name}
-        userRole={profile.role}
-        title="Warehouse"
-      />
-      <main className="mx-auto px-4 py-6 text-base">
-        <WarehousePageClient paintItems={paintItems} />
-      </main>
-    </div>
+    <PageLayout userName={profile.name} userRole={profile.role} title="Warehouse">
+      <WarehousePageClient paintItems={paintItems} />
+    </PageLayout>
   );
 }

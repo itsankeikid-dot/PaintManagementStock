@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
 import { DEFAULT_LOW_STOCK_THRESHOLD } from "@/lib/constants";
-import { formatStockSideroom } from "@/lib/format-utils";
+import { formatQty } from "@/lib/format-utils";
 import type { Stock, PaintItem } from "@/types/database";
 
 type StockWithItem = Stock & { paint_items: PaintItem };
@@ -124,18 +124,18 @@ export function LowStockTable({ lowStock }: LowStockTableProps) {
                     </td>
                     <td className="px-5 py-3 text-right">
                       <span className={`text-sm font-semibold tabular-nums ${item.stock_warehouse === 0 ? "text-rose-600" : "text-slate-700"}`}>
-                        {formatStockSideroom(item.stock_warehouse)}
+                        {formatQty(item.stock_warehouse)}
                       </span>
                     </td>
                     <td className="px-5 py-3 text-right">
                       <span className={`text-sm font-semibold tabular-nums ${item.stock_sideroom === 0 ? "text-rose-600" : "text-slate-700"}`}>
-                        {formatStockSideroom(item.stock_sideroom)}
+                        {formatQty(item.stock_sideroom)}
                       </span>
                     </td>
                     <td className="px-5 py-3 text-right">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-sm font-bold tabular-nums ${total === 0 ? "bg-rose-100 text-rose-700" : "bg-amber-50 text-amber-700"}`}>
                         {total === 0 && <span className="w-1.5 h-1.5 rounded-full bg-rose-500" aria-hidden="true" />}
-                        {formatStockSideroom(total)}
+                        {formatQty(total)}
                       </span>
                     </td>
                   </tr>

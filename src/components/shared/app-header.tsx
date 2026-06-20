@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { logout } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
-import { ROLE_LABELS } from "@/lib/constants";
+import { ROLE_LABELS } from "@/lib/role-config";
 import type { UserRole } from "@/types/database";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";

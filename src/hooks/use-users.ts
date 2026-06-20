@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { createUser, updateUser, deleteUser } from "@/actions/users";
 import { usePaginatedSearch } from "@/hooks/use-paginated-search";
 import { downloadCSV } from "@/lib/csv-utils";
 import { formatDateReadableWIB } from "@/lib/date-utils";
-import { ROLE_LABELS } from "@/lib/constants";
+import { ROLE_LABELS } from "@/lib/role-config";
 import type { UserRole } from "@/types/database";
 
 export type Profile = {
@@ -45,9 +45,13 @@ export function useUsers(initialProfiles: Profile[]) {
   // Search
   const [searchTerm, setSearchTerm] = useState("");
 
-  const roleCounts = profiles.reduce(
-    (acc, p) => ({ ...acc, [p.role]: (acc[p.role] ?? 0) + 1 }),
-    {} as Record<string, number>
+  const roleCounts = useMemo(
+    () =>
+      profiles.reduce(
+        (acc, p) => ({ ...acc, [p.role]: (acc[p.role] ?? 0) + 1 }),
+        {} as Record<string, number>
+      ),
+    [profiles]
   );
 
   const handleAdd = async (e: React.FormEvent) => {

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Palette, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, Search, X } from "lucide-react";
 import { DEFAULT_LOW_STOCK_THRESHOLD } from "@/lib/constants";
-import { formatStockSideroom } from "@/lib/format-utils";
+import { formatQty } from "@/lib/format-utils";
 import type { Stock, PaintItem } from "@/types/database";
 
 type StockWithItem = Stock & { paint_items: PaintItem };
@@ -196,16 +196,16 @@ export function StockTable({ stockData }: StockTableProps) {
                     </TableCell>
                     <TableCell className="text-right">
                       <span className={`text-sm font-semibold tabular-nums ${item.stock_warehouse === 0 ? "text-rose-600" : "text-slate-700"}`}>
-                        {formatStockSideroom(item.stock_warehouse)}
+                        {formatQty(item.stock_warehouse)}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <span className={`text-sm font-semibold tabular-nums ${item.stock_sideroom === 0 ? "text-rose-600" : "text-slate-700"}`}>
-                        {formatStockSideroom(item.stock_sideroom)}
+                        {formatQty(item.stock_sideroom)}
                       </span>
                     </TableCell>
                     <TableCell className={`text-right font-semibold tabular-nums ${isLow ? "text-rose-700" : "text-slate-900"}`}>
-                      {formatStockSideroom(total)}
+                      {formatQty(total)}
                     </TableCell>
                   </TableRow>
                 );

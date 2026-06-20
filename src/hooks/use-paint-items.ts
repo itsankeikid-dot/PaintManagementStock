@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import {
   createPaintItem,
@@ -62,7 +62,7 @@ export function usePaintItems(initialItems: PaintItem[]) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  const activeCount = items.filter((i) => i.is_active).length;
+  const activeCount = useMemo(() => items.filter((i) => i.is_active).length, [items]);
   const inactiveCount = items.length - activeCount;
 
   const handleAdd = async (e: React.FormEvent) => {

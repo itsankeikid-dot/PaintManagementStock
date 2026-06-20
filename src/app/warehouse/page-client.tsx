@@ -36,10 +36,9 @@ export default function WarehousePage({ paintItems }: WarehouseFormProps) {
     recentLogs,
     execute,
     validateAndProceed,
-  } = useTransactionForm({ initialQty: 1 });
-
-  const selectedPaintItem = paintItems.find((p) => p.id === selectedPaint);
-  const currentStock = stockLevels.find((s) => s.paint_item_id === selectedPaint);
+    selectedPaintItem,
+    currentStock,
+  } = useTransactionForm({ initialQty: 1, paintItems });
 
   // qty is entered in cans; stock is tracked in kg.
   const weightPerCan = selectedPaintItem?.weight_per_can ?? 0;

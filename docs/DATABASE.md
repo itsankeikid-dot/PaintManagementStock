@@ -48,6 +48,7 @@ erDiagram
         log_type type
         numeric qty
         text notes
+        text condition
         timestamptz created_at
     }
 ```
@@ -56,14 +57,14 @@ erDiagram
 
 ### `users`
 
-Standalone users table - no Supabase Auth dependency. PIN is the sole authentication method.
+Standalone users table — no Supabase Auth dependency. PIN is the sole authentication method. PINs are hashed with bcrypt before storage; legacy plaintext PINs are auto-hashed on first successful login.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | UUID (PK) | Auto-generated UUID |
 | `name` | TEXT | Display name of the user |
-| `pin` | TEXT (UNIQUE) | 4-6 digit PIN for login |
-| `role` | user_role ENUM | `warehouse`, `sideroom`, or `admin` |
+| `pin` | TEXT (UNIQUE) | 4-6 digit PIN (bcrypt-hashed) |
+| `role` | user_role ENUM | `warehouse`, `sideroom`, `admin`, or `office` |
 | `created_at` | TIMESTAMPTZ | Account creation timestamp |
 
 ### `paint_items`
@@ -109,30 +110,34 @@ Activity log recording every stock movement.
 |--------|------|-------------|
 | `id` | UUID (PK) | Auto-generated UUID |
 | `paint_item_id` | UUID (FK) | References `paint_items(id)` |
-| `user_id` | UUID (FK) | References `profiles(id)` |
+| `user_id` | UUID (FK) | References `users(id)` |
 | `type` | log_type ENUM | Transaction type (see below) |
-| `qty` | NUMERIC(10,2) | Quantity in kg (must be > 0) |
+| `qty` | NUMERIC(10,2) | Quantity in kg (must be ≥ 0; 0 allowed for RESIDUAL_RETURN) |
 | `notes` | TEXT | Optional notes (supplier, reason, etc.) |
+| `condition` | TEXT | Optional paint condition (e.g., for dispose entries) |
 | `created_at` | TIMESTAMPTZ | Transaction timestamp |
 
 ## Enums
 
 ### `log_type`
 
-| Value | Meaning | Effect on Stock |
-|-------|---------|-----------------|
-| `STOCK_IN` | New paint arrives at warehouse | `stock_warehouse` increases |
-| `STOCK_OUT` | Paint sent to painting section | `stock_warehouse` decreases |
-| `SIDEROOM_IN` | Leftover paint goes to sideroom | `stock_sideroom` increases |
-| `DISPOSE` | Paint thrown away (expired) | `stock_sideroom` decreases |
+| Value | Meaning | Effect on Stock | Triggered By |
+|-------|---------|-----------------|--------------|
+| `STOCK_IN` | New paint arrives at warehouse | `stock_warehouse` increases | Warehouse operator |
+| `STOCK_OUT` | Paint taken from warehouse to painting | `stock_warehouse` decreases, `stock_sideroom` increases; auto-logs `SIDEROOM_RECEIVE` | Sideroom operator |
+| `RESIDUAL_RETURN` | Leftover paint returned after painting | `stock_sideroom` decreases by consumed portion; auto-logs `PAINT_CONSUMED` | Sideroom operator |
+| `DISPOSE` | Paint thrown away (expired) | `stock_sideroom` decreases | Sideroom operator |
+| `PAINT_CONSUMED` | *(auto-logged)* Paint consumed during painting | Informational only (stock already adjusted by `RESIDUAL_RETURN`) | System |
+| `SIDEROOM_RECEIVE` | *(auto-logged)* Paint arrives at sideroom from `STOCK_OUT` | Informational only (stock already adjusted by `STOCK_OUT`) | System |
 
 ### `user_role`
 
 | Value | Access |
 |-------|--------|
-| `warehouse` | Stock-in, Stock-out, view own history |
-| `sideroom` | Receive leftover, Dispose paint |
+| `warehouse` | Stock-in only |
+| `sideroom` | Stock-out, Residual return, Dispose |
 | `admin` | Full access: dashboard, reports, manage master data |
+| `office` | Dashboard access for monitoring and reports (read-only) |
 
 ## Triggers
 
@@ -141,20 +146,45 @@ Activity log recording every stock movement.
 | `paint_items_updated_at` | `paint_items` | Auto-updates `updated_at` on row update |
 | `stock_updated_at` | `stock` | Auto-updates `updated_at` on row update |
 | `auto_create_stock` | `paint_items` | Auto-creates `stock` row (0,0) on new paint item |
-| `on_auth_user_created` | `auth.users` | Auto-creates `profiles` row on user signup |
 
 ## Row Level Security (RLS)
 
-RLS is **disabled** on all tables. Access control is handled in the application layer:
-- Next.js middleware (`src/middleware.ts`) protects routes via JWT session cookie
-- Server actions verify session before performing operations
+RLS is **enabled** on all tables. Access control is enforced via Supabase roles:
 
-The Supabase anon key has full read/write access to all tables.
+| Supabase Role | Access | Used By |
+|---------------|--------|---------|
+| `service_role` | Full access to all tables (bypasses RLS) | Server actions via `createAdminClient()` |
+| `anon` | Read-only on `paint_items` and `stock` only | Browser client for dropdowns/stock display |
+
+- The `users` table is fully protected — PINs are never exposed to the browser.
+- The `log` table is protected — transaction history requires server-side access.
+- Session management uses JWT cookies verified by server actions.
+- Server actions verify the session before performing operations.
+
+See migration `004_enable_rls.sql` for the full policy definitions.
+
+## Indexes
+
+| Index | Table | Column(s) |
+|-------|-------|-----------|
+| `idx_log_paint_item` | `log` | `paint_item_id` |
+| `idx_log_type` | `log` | `type` |
+| `idx_log_created_at` | `log` | `created_at` |
+| `idx_log_user` | `log` | `user_id` |
+| `idx_stock_paint_item` | `stock` | `paint_item_id` |
+| `idx_paint_items_active` | `paint_items` | `is_active` |
 
 ## Seed Data
 
 10 sample paint items are included in the SQL schema covering categories: Base, Standard, Primer, Epoxy, Thinner, Coating.
 
+3 seed users are included:
+- Admin: PIN `1234` (auto-hashed on first login)
+- Warehouse Operator 1: PIN `1111` (auto-hashed on first login)
+- Sideroom Operator 1: PIN `2222` (auto-hashed on first login)
+
 ## SQL File Location
 
 Full schema SQL: `supabase/schema.sql`
+
+Migrations: `supabase/migrations/`

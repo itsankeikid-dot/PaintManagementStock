@@ -65,12 +65,14 @@ export function useTransactionForm({ initialQty = 1 }: UseTransactionFormOptions
       available?: number;
       compareQty?: number;
       insufficientMessage?: string;
+      /** When true, qty = 0 is accepted (e.g. RESIDUAL_RETURN meaning all consumed). */
+      allowZero?: boolean;
     }) => {
       if (!selectedPaint) {
         toast.error("Pilih item cat terlebih dahulu");
         return;
       }
-      if (qty <= 0) {
+      if (opts.allowZero ? qty < 0 : qty <= 0) {
         toast.error("Masukkan jumlah yang valid");
         return;
       }

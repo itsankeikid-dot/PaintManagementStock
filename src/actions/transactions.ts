@@ -119,15 +119,31 @@ async function createTransaction(
 
     const pendingResidual = totalOut - totalAccounted;
 
-    if (storedQty > pendingResidual) {
+    if (pendingResidual <= 0) {
+      // All STOCK_OUT paint has been fully reconciled (returned + consumed).
+      // Allow further Terima Sisa to record residual from current sideroom
+      // stock — storedQty is the portion returned as residual, the rest
+      // (stock_sideroom - storedQty) was consumed during painting.
+      if (storedQty > stock.stock_sideroom) {
+        return {
+          success: false,
+          error: stock.stock_sideroom > 0
+            ? `Stok sideroom tidak cukup. Tersedia: ${stock.stock_sideroom.toFixed(2)} kg`
+            : "Stok sideroom kosong, tidak ada cat yang bisa dicatat",
+        };
+      }
+      // consumedQty = remaining stock minus the returned residual portion
+      consumedQty = stock.stock_sideroom - storedQty;
+    } else if (storedQty > pendingResidual) {
       return {
         success: false,
         error: `Berat sisa melebihi cat yang keluar dari gudang. Maksimal: ${pendingResidual.toFixed(2)} kg`,
       };
+    } else {
+      // Normal case: reconcile against pending STOCK_OUT residual.
+      // consumedQty = the portion not returned (used up during painting).
+      consumedQty = Math.max(0, pendingResidual - storedQty);
     }
-
-    // The portion not returned as residual is consumed during painting
-    consumedQty = Math.max(0, pendingResidual - storedQty);
 
     // Guard: receiving the residual subtracts consumedQty from the sideroom
     // balance. If paint was already used/disposed from the sideroom before the
@@ -141,7 +157,10 @@ async function createTransaction(
     }
   }
 
-  // Insert log entry (qty stored in kg)
+  // Insert log entry (qty stored in kg).
+  // RESIDUAL_RETURN always stores the actual received qty (storedQty).
+  // When storedQty=0 (all consumed), the PAINT_CONSUMED auto-log below
+  // records the consumed amount and shows as negative in the activity feed.
   const { error: logError } = await supabase.from("log").insert({
     paint_item_id: paintItemId,
     user_id: session.userId,
@@ -219,6 +238,9 @@ async function createTransaction(
   // consumedQty = pending_residual - received_qty (set above during validation).
   // This records the paint that was consumed (used up) during the painting
   // process and will not return to the sideroom as residual.
+  // For storedQty=0, this is the ONLY log entry showing the stock decrease
+  // (the RESIDUAL_RETURN log stores 0, while PAINT_CONSUMED shows the full
+  // consumed amount as negative in the activity feed).
   if (type === "RESIDUAL_RETURN" && consumedQty > 0) {
     const { error: consumedError } = await supabase.from("log").insert({
       paint_item_id: paintItemId,

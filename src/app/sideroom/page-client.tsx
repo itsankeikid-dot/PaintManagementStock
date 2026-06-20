@@ -8,7 +8,6 @@ import {
   createStockOut,
   createResidualReturn,
   createDispose,
-  createSideroomUse,
 } from "@/actions/transactions";
 import type { PaintItem } from "@/types/database";
 import { ActivityFeed } from "@/components/shared/activity-feed";
@@ -16,7 +15,7 @@ import { Spinner } from "@/components/shared/spinner";
 import { PaintSelect } from "@/components/shared/paint-select";
 import { QtyStepper } from "@/components/shared/qty-stepper";
 import { useTransactionForm } from "@/hooks/use-transaction-form";
-import { ArrowUp, ArrowDown, Trash2, FlaskConical, PaintBucket, Scale } from "lucide-react";
+import { ArrowUp, ArrowDown, Trash2, FlaskConical, Scale, AlertCircle } from "lucide-react";
 import { formatStockSideroom } from "@/lib/format-utils";
 import { SideroomConfirmDialog } from "./_components/sideroom-confirm-dialog";
 import { StockOutConfirmDialog } from "./_components/stock-out-confirm-dialog";
@@ -31,7 +30,7 @@ const QUICK_CANS = [1, 2, 5, 10, 20];
 const QUICK_KG = [0.5, 1, 2, 5];
 const QUICK_RECEIVE = [0, 0.5, 1, 2, 5]; // includes 0 for "all consumed"
 
-type ActiveTab = "stockout" | "receive" | "use" | "dispose";
+type ActiveTab = "stockout" | "receive" | "dispose";
 
 /**
  * Sideroom operator page.
@@ -40,7 +39,7 @@ type ActiveTab = "stockout" | "receive" | "use" | "dispose";
  *    balance immediately. Entered in cans, stored in kg.
  *  - Terima Sisa (RESIDUAL_RETURN): reconcile returned residual; the un-returned
  *    portion is auto-logged as PAINT_CONSUMED and removed from sideroom stock.
- *  - Pakai (SIDEROOM_USE) / Dispose (DISPOSE): both reduce sideroom stock.
+ *  - Dispose (DISPOSE): reduce sideroom stock (expired/mixed paint).
  */
 export default function SideroomPageClient({ paintItems }: SideroomPageClientProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("stockout");
@@ -66,7 +65,6 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
 
   const isStockOut = activeTab === "stockout";
   const isReceive  = activeTab === "receive";
-  const isUse      = activeTab === "use";
   const isDispose  = activeTab === "dispose";
 
   // Stock Out qty is in cans → convert to kg for stock comparisons/preview.
@@ -102,11 +100,19 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
       return;
     }
 
-    // Terima Sisa: no special pre-validation — just record the residual amount
+    // Terima Sisa: qty=0 means all paint consumed, no residual returned
+    if (activeTab === "receive") {
+      validateAndProceed({
+        needsConfirm: false,
+        allowZero: true,
+        proceed: executeTransaction,
+      });
+      return;
+    }
 
-    // Both "use" and "dispose" reduce sideroom stock — show confirmation
+    // Dispose: validate against sideroom stock, show confirmation
     validateAndProceed({
-      needsConfirm: activeTab === "use" || activeTab === "dispose",
+      needsConfirm: true,
       available: currentStock?.stock_sideroom,
       insufficientMessage: `Stok tidak cukup! Tersedia: ${formatStockSideroom(currentStock?.stock_sideroom ?? 0)}`,
       proceed: executeTransaction,
@@ -119,8 +125,6 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
         return createStockOut({ paint_item_id: selectedPaint, qty, notes: notes || undefined });
       } else if (activeTab === "receive") {
         return createResidualReturn({ paint_item_id: selectedPaint, qty, notes: notes || undefined });
-      } else if (activeTab === "use") {
-        return createSideroomUse({ paint_item_id: selectedPaint, qty, notes: notes || undefined });
       }
       return createDispose({ paint_item_id: selectedPaint, qty, notes: notes || undefined, condition });
     };
@@ -128,8 +132,9 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
     const kgLabel = `${qty.toFixed(2)} kg`;
     const messages: Record<ActiveTab, string> = {
       stockout: `Stock Out: ${qty} kaleng (${qtyKg.toFixed(2)} kg) ${selectedPaintItem?.name} masuk ke sideroom`,
-      receive:  `${kgLabel} ${selectedPaintItem?.name} diterima di sideroom`,
-      use:      `${kgLabel} ${selectedPaintItem?.name} berhasil dicatat sebagai terpakai`,
+      receive:  qty === 0
+        ? `Semua cat ${selectedPaintItem?.name} habis terpakai (tidak ada sisa)`
+        : `${kgLabel} ${selectedPaintItem?.name} diterima di sideroom`,
       dispose:  `${kgLabel} ${selectedPaintItem?.name} berhasil dibuang`,
     };
 
@@ -186,21 +191,6 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
       notesPlaceholder: "Kondisi cat, persentase sisa...",
       submitLabel: "Catat Sisa Cat",
     },
-    use: {
-      label: "Pakai",
-      activeClass: "bg-purple-600 text-white shadow-lg shadow-purple-200 focus-visible:ring-purple-500",
-      inactiveHover: "hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 focus-visible:ring-purple-400",
-      iconBg: "bg-purple-100",
-      iconColor: "text-purple-600",
-      submitBg: "bg-purple-600 hover:bg-purple-700",
-      submitShadow: "shadow-purple-200",
-      submitRing: "focus-visible:ring-purple-500",
-      accentBar: "bg-gradient-to-r from-purple-400 to-purple-500",
-      icon: <PaintBucket className="size-5" aria-hidden="true" />,
-      formTitle: "Catat Pemakaian Cat Sideroom",
-      notesPlaceholder: "Nomor job, nama pekerjaan...",
-      submitLabel: "Catat Pemakaian",
-    },
     dispose: {
       label: "Buang",
       activeClass: "bg-red-600 text-white shadow-lg shadow-red-200 focus-visible:ring-red-500",
@@ -223,9 +213,9 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
   return (
     <div className="space-y-5">
 
-      {/* Tab Selector (4 tabs, 2x2 grid) */}
-      <div className="grid grid-cols-2 gap-2">
-        {(["stockout", "receive", "use", "dispose"] as ActiveTab[]).map((tab) => {
+      {/* Tab Selector (3 tabs) */}
+      <div className="grid grid-cols-3 gap-2">
+        {(["stockout", "receive", "dispose"] as ActiveTab[]).map((tab) => {
           const tc = tabConfig[tab];
           const isActive = activeTab === tab;
           return (
@@ -302,7 +292,7 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
 
           <div className="space-y-1.5">
             <QtyStepper
-              label={isStockOut ? "Jumlah (kaleng)" : isReceive ? "Berat Sisa (kg)" : isUse ? "Berat Dipakai (kg)" : "Berat Dibuang (kg)"}
+              label={isStockOut ? "Jumlah (kaleng)" : isReceive ? "Berat Sisa (kg)" : "Berat Dibuang (kg)"}
               value={qty}
               onChange={handleQtyChange}
               onQuickSelect={setQty}
@@ -312,6 +302,7 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
               disabled={isLoading}
               quickValues={isStockOut ? QUICK_CANS : isReceive ? QUICK_RECEIVE : QUICK_KG}
               quickSuffix={isStockOut ? "" : " kg"}
+              quickLabels={isReceive ? { 0: "0 (habis)" } : undefined}
               inlineUnit={isStockOut ? undefined : "kg"}
               unitLabel={isStockOut ? "kaleng" : "kg"}
               activeChipClass={cfg.submitBg}
@@ -320,6 +311,12 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
               <p className="text-xs text-[#64748B] pl-1">
                 Setara <strong className="text-[#1e344a]">{qtyKg.toFixed(2)} kg</strong> ({qty} kaleng × {weightPerCan} kg)
               </p>
+            )}
+            {isReceive && qty === 0 && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-50 border border-orange-200 text-orange-700 text-sm font-medium mt-1">
+                <AlertCircle className="size-4 flex-shrink-0" aria-hidden="true" />
+                <span>Semua cat habis terpakai — tidak ada sisa yang dikembalikan</span>
+              </div>
             )}
           </div>
 
@@ -359,7 +356,10 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
               shadow-md ${cfg.submitBg} ${cfg.submitShadow} ${cfg.submitRing}
             `}
           >
-            {isLoading ? <><Spinner className="size-5" /> Memproses...</> : <>{cfg.icon} {cfg.submitLabel}</>}
+            {isLoading
+              ? <><Spinner className="size-5" /> Memproses...</>
+              : <>{cfg.icon} {isReceive && qty === 0 ? "Catat: Semua Habis" : cfg.submitLabel}</>
+            }
           </button>
         </form>
         </div>
@@ -385,9 +385,8 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
         onConfirm={executeTransaction}
       />
       <SideroomConfirmDialog
-        open={showConfirm && (isUse || isDispose)}
+        open={showConfirm && isDispose}
         onOpenChange={setShowConfirm}
-        isDispose={isDispose}
         paintItem={selectedPaintItem}
         currentStock={currentStock}
         qty={qty}

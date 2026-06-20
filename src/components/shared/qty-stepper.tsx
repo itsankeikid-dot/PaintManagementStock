@@ -25,6 +25,8 @@ interface QtyStepperProps {
   unitLabel: string;
   /** When set, renders this unit inside the input on the right. */
   inlineUnit?: string;
+  /** Optional map of value → custom chip label (e.g. 0 → "0 (habis)"). */
+  quickLabels?: Record<number, string>;
 }
 
 const stepBtn =
@@ -48,6 +50,7 @@ export function QtyStepper({
   activeChipClass,
   unitLabel,
   inlineUnit,
+  quickLabels,
 }: QtyStepperProps) {
   // Local display value — decouples the input from parent so the user can
   // freely clear the field to type a new number. Synced from `value` prop
@@ -145,7 +148,7 @@ export function QtyStepper({
                 : "bg-[#F8FAFC] border border-[#E2E8F0] text-[#475569] hover:bg-[#F1F5F9] hover:border-[#CBD5E1] focus-visible:ring-[#0e7ad5]"
             }`}
           >
-            {q}{quickSuffix}
+            {quickLabels?.[q] ?? `${q}${quickSuffix}`}
           </button>
         ))}
       </div>

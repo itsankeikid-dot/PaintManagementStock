@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { LOG_TYPE_COLORS, LOG_TYPE_LABELS } from "@/lib/constants";
 import { formatDateTimeWIB } from "@/lib/date-utils";
 import { formatQty } from "@/lib/format-utils";
@@ -32,6 +32,25 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [activeTypes, setActiveTypes] = useState<Set<LogType>>(new Set());
+  const [newLogIds, setNewLogIds] = useState<Set<string>>(new Set());
+  const prevFirstIdRef = useRef<string | null>(null);
+
+  // Detect new logs prepended to the list (realtime update)
+  useEffect(() => {
+    if (logs.length === 0) return;
+    const currentFirstId = logs[0].id;
+    if (prevFirstIdRef.current !== null && prevFirstIdRef.current !== currentFirstId) {
+      // Find all new log IDs that appeared before the previous first
+      const prevFirstIdx = logs.findIndex((l) => l.id === prevFirstIdRef.current);
+      if (prevFirstIdx > 0) {
+        const ids = new Set(logs.slice(0, prevFirstIdx).map((l) => l.id));
+        setNewLogIds(ids);
+        const t = setTimeout(() => setNewLogIds(new Set()), 600);
+        return () => clearTimeout(t);
+      }
+    }
+    prevFirstIdRef.current = currentFirstId;
+  }, [logs]);
 
   const toggleType = (type: LogType) => {
     setActiveTypes((prev) => {
@@ -197,10 +216,11 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
         ) : (
           visibleLogs.map((log) => {
             const isPositive = log.type === "STOCK_IN" || log.type === "SIDEROOM_RECEIVE" || log.type === "RESIDUAL_RETURN";
+            const isNew = newLogIds.has(log.id);
             return (
               <div
                 key={log.id}
-                className="flex items-center justify-between px-5 py-4 sm:py-3.5 hover:bg-[#FAFBFC] transition-colors duration-100"
+                className={`flex items-center justify-between px-5 py-4 sm:py-3.5 hover:bg-[#FAFBFC] transition-colors duration-100 ${isNew ? "animate-slide-in" : ""}`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div

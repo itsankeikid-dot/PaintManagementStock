@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -38,6 +38,30 @@ export function StockTable({ stockData }: StockTableProps) {
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [page, setPage] = useState(1);
+  const [changedIds, setChangedIds] = useState<Set<string>>(new Set());
+  const prevStockRef = useRef<Map<string, number>>(new Map());
+
+  useEffect(() => {
+    const prev = prevStockRef.current;
+    const next = new Map<string, number>();
+    const ids = new Set<string>();
+
+    stockData.forEach((item) => {
+      const total = item.stock_warehouse + item.stock_sideroom;
+      next.set(item.id, total);
+      const prevTotal = prev.get(item.id);
+      if (prevTotal !== undefined && prevTotal !== total) {
+        ids.add(item.id);
+      }
+    });
+
+    prevStockRef.current = next;
+    if (ids.size > 0) {
+      setChangedIds(ids);
+      const t = setTimeout(() => setChangedIds(new Set()), 800);
+      return () => clearTimeout(t);
+    }
+  }, [stockData]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -154,8 +178,9 @@ export function StockTable({ stockData }: StockTableProps) {
               paginated.map((item) => {
                 const total = item.stock_warehouse + item.stock_sideroom;
                 const isLow = total <= DEFAULT_LOW_STOCK_THRESHOLD;
+                const isChanged = changedIds.has(item.id);
                 return (
-                  <TableRow key={item.id} className={isLow ? "bg-rose-50/80" : ""}>
+                  <TableRow key={item.id} className={`${isLow ? "bg-rose-50/80" : ""} ${isChanged ? "animate-flash" : ""} transition-colors duration-100`}>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
                         <div

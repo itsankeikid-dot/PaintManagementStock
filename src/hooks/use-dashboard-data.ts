@@ -40,6 +40,7 @@ export function useDashboardData() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("connecting");
+  const [refreshTick, setRefreshTick] = useState(0);
 
   // Stable refs to avoid effect re-runs
   const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -62,6 +63,7 @@ export function useDashboardData() {
       setLowStock(lowStockResult);
       setRecentLogs(logsResult);
       setLastUpdated(new Date());
+      setRefreshTick((t) => t + 1);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -149,6 +151,7 @@ export function useDashboardData() {
     isRefreshing,
     lastUpdated,
     realtimeStatus,
+    refreshTick,
     refresh,
   };
 }

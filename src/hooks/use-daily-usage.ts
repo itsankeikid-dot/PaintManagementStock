@@ -15,10 +15,10 @@ const PRESET_DAYS: Record<Exclude<DateRangePreset, "custom">, number> = {
 
 /**
  * Manages the daily-usage chart's date range (preset or custom) and refetches
- * usage data whenever the range changes. Exposes `getActiveDateRange` so the
- * export actions can reuse the exact same resolved range.
+ * usage data whenever the range changes or `refreshTick` increments
+ * (e.g. driven by the dashboard's realtime subscription).
  */
-export function useDailyUsage() {
+export function useDailyUsage(refreshTick?: number) {
   const [dailyUsage, setDailyUsage] = useState<DailyUsage[]>([]);
   const [dateRange, setDateRange] = useState<DateRangePreset>("7d");
   const [customFrom, setCustomFrom] = useState("");
@@ -40,7 +40,8 @@ export function useDailyUsage() {
       setDailyUsage(usage);
     };
     fetchUsage();
-  }, [getActiveDateRange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getActiveDateRange, refreshTick]);
 
   return {
     dailyUsage,

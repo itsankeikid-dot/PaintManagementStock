@@ -1,3 +1,4 @@
+import { useRef, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   BarChart,
@@ -13,12 +14,14 @@ import { Download } from "lucide-react";
 import type { DailyUsage } from "@/types/database";
 import type { DateRangePreset } from "@/hooks/use-daily-usage";
 
-/* ── Bar configuration ── */
+/* ── Bar configuration with animation ── */
 const BAR_CONFIG = [
   { key: "issued",   name: "Dikeluarkan", fill: "#3b82f6", label: "Dikeluarkan dari gudang" },
   { key: "consumed", name: "Dipakai",     fill: "#f59e0b", label: "Dipakai / Terpakai" },
   { key: "wasted",   name: "Dibuang",     fill: "#dc2626", label: "Dibuang / Dispose" },
 ] as const;
+
+const CHART_ANIM_DURATION = 700;
 
 /* ── Custom Tooltip ── */
 interface TooltipProps {
@@ -141,12 +144,24 @@ export function DailyUsageChart({
 }: DailyUsageChartProps) {
   const isEmpty = dailyUsage.every((d) => d.issued === 0 && d.consumed === 0 && d.wasted === 0);
 
+  // Flash animation on realtime data update
+  const prevDataLen = useRef(dailyUsage.length);
+  const [flash, setFlash] = useState(false);
+  useEffect(() => {
+    if (dailyUsage.length !== prevDataLen.current || dailyUsage.length > 0) {
+      setFlash(true);
+      const t = setTimeout(() => setFlash(false), 800);
+      prevDataLen.current = dailyUsage.length;
+      return () => clearTimeout(t);
+    }
+  }, [dailyUsage]);
+
   return (
     <section className="space-y-3">
       <h3 className="text-2xl font-semibold tracking-tight text-slate-900">
         Daily Usage
       </h3>
-      <Card className="overflow-hidden border-slate-200 bg-white shadow-sm">
+      <Card className={`overflow-hidden border-slate-200 bg-white shadow-sm transition-all ${flash ? "animate-flash" : ""}`}>
         <CardHeader className="border-b border-slate-100 pb-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle className="text-base font-semibold text-slate-900">
@@ -228,7 +243,16 @@ export function DailyUsageChart({
                 <Legend content={<CustomLegend />}
                 />
                 {BAR_CONFIG.map((bar) => (
-                  <Bar key={bar.key} dataKey={bar.key} name={bar.name} fill={bar.fill} radius={[3, 3, 0, 0]} />
+                  <Bar
+                    key={bar.key}
+                    dataKey={bar.key}
+                    name={bar.name}
+                    fill={bar.fill}
+                    radius={[3, 3, 0, 0]}
+                    isAnimationActive
+                    animationDuration={CHART_ANIM_DURATION}
+                    animationEasing="ease-out"
+                  />
                 ))}
               </BarChart>
             </ResponsiveContainer>

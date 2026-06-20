@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
 import { DEFAULT_LOW_STOCK_THRESHOLD } from "@/lib/constants";
@@ -15,6 +15,34 @@ interface LowStockTableProps {
 
 export function LowStockTable({ lowStock }: LowStockTableProps) {
   const [showAll, setShowAll] = useState(false);
+  const [changedIds, setChangedIds] = useState<Set<string>>(new Set());
+  const prevStockRef = useRef<Map<string, number>>(new Map());
+
+  useEffect(() => {
+    // Detect which items changed by comparing stock values
+    const prev = prevStockRef.current;
+    const next = new Map<string, number>();
+    const ids = new Set<string>();
+
+    lowStock.forEach((item) => {
+      const total = item.stock_warehouse + item.stock_sideroom;
+      next.set(item.id, total);
+      const prevTotal = prev.get(item.id);
+      if (prevTotal !== undefined && prevTotal !== total) {
+        ids.add(item.id);
+      } else if (prevTotal === undefined && prev.size > 0) {
+        // New item appeared
+        ids.add(item.id);
+      }
+    });
+
+    prevStockRef.current = next;
+    if (ids.size > 0) {
+      setChangedIds(ids);
+      const t = setTimeout(() => setChangedIds(new Set()), 800);
+      return () => clearTimeout(t);
+    }
+  }, [lowStock]);
 
   if (lowStock.length === 0) return null;
 
@@ -76,8 +104,9 @@ export function LowStockTable({ lowStock }: LowStockTableProps) {
             <tbody className="divide-y divide-rose-50">
               {visible.map((item) => {
                 const total = item.stock_warehouse + item.stock_sideroom;
+                const isChanged = changedIds.has(item.id);
                 return (
-                  <tr key={item.id} className="hover:bg-rose-50/40 transition-colors duration-100">
+                  <tr key={item.id} className={`hover:bg-rose-50/40 transition-colors duration-100 ${isChanged ? "animate-flash" : ""}`}>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2.5">
                         <div

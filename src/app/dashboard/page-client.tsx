@@ -28,6 +28,7 @@ export default function DashboardPageClient({ role }: { role: UserRole }) {
     isRefreshing,
     lastUpdated,
     realtimeStatus,
+    refreshTick,
     refresh,
   } = useDashboardData();
 
@@ -40,7 +41,7 @@ export default function DashboardPageClient({ role }: { role: UserRole }) {
     customTo,
     setCustomTo,
     getActiveDateRange,
-  } = useDailyUsage();
+  } = useDailyUsage(refreshTick);
 
   const {
     isExportingUsage,

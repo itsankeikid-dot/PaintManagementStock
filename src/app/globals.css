@@ -128,3 +128,36 @@
     @apply font-sans;
   }
 }
+
+/* ── Realtime update animations ── */
+@keyframes flash-highlight {
+  0%   { background-color: rgba(14, 122, 213, 0.08); }
+  100% { background-color: transparent; }
+}
+
+@keyframes slide-in-top {
+  0%   { opacity: 0; transform: translateY(-8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-up {
+  0%   { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.7; }
+}
+
+.animate-flash {
+  animation: flash-highlight 0.8s ease-out;
+}
+
+.animate-slide-in {
+  animation: slide-in-top 0.35s ease-out;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out;
+}

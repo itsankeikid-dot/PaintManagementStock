@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AnimatedNumber } from "@/components/shared/animated-number";
 import {
   Palette,
   Warehouse,
@@ -99,10 +100,10 @@ export function MonitoringCards({
   onRefresh,
 }: MonitoringCardsProps) {
   const cards = [
-    { label: "Paint Types", value: String(stats.totalItems), icon: Palette, tooltip: "Jumlah jenis cat yang terdaftar di sistem (aktif dan nonaktif)." },
-    { label: "Warehouse Stock", value: `${stats.totalWarehouseStock.toFixed(1)} kg`, icon: Warehouse, tooltip: "Total stok cat di gudang utama. Stok masuk dicatat oleh operator warehouse." },
-    { label: "Sideroom Stock", value: `${stats.totalSideroomStock.toFixed(1)} kg`, icon: FlaskConical, tooltip: "Total stok cat di ruang cat (sideroom). Stok diambil dari gudang oleh operator sideroom." },
-    { label: "Today Activity", value: String(stats.todayTransactions), icon: Activity, tooltip: "Jumlah transaksi yang tercatat hari ini (stock in, stock out, pemakaian, pembuangan)." },
+    { label: "Paint Types", value: stats.totalItems, decimals: 0, suffix: "", icon: Palette, tooltip: "Jumlah jenis cat yang terdaftar di sistem (aktif dan nonaktif)." },
+    { label: "Warehouse Stock", value: stats.totalWarehouseStock, decimals: 1, suffix: " kg", icon: Warehouse, tooltip: "Total stok cat di gudang utama. Stok masuk dicatat oleh operator warehouse." },
+    { label: "Sideroom Stock", value: stats.totalSideroomStock, decimals: 1, suffix: " kg", icon: FlaskConical, tooltip: "Total stok cat di ruang cat (sideroom). Stok diambil dari gudang oleh operator sideroom." },
+    { label: "Today Activity", value: stats.todayTransactions, decimals: 0, suffix: "", icon: Activity, tooltip: "Jumlah transaksi yang tercatat hari ini (stock in, stock out, pemakaian, pembuangan)." },
   ];
 
   return (
@@ -179,7 +180,14 @@ export function MonitoringCards({
                       <InfoTooltip text={card.tooltip} label={card.label} />
                     </div>
                     <p className="mt-1 text-4xl font-semibold tracking-tight text-blue-600">
-                      {card.value}
+                      <AnimatedNumber
+                        value={card.value}
+                        decimals={card.decimals}
+                        duration={600}
+                      />
+                      {card.suffix && (
+                        <span className="text-2xl font-medium text-blue-400 ml-1">{card.suffix}</span>
+                      )}
                     </p>
                   </div>
                   <div className="rounded-full p-2 bg-slate-100 text-slate-500">

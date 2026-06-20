@@ -215,7 +215,8 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
           </div>
         ) : (
           visibleLogs.map((log) => {
-            const isPositive = log.type === "STOCK_IN" || log.type === "SIDEROOM_RECEIVE" || log.type === "RESIDUAL_RETURN";
+            const isPositive = log.type === "STOCK_IN" || log.type === "SIDEROOM_RECEIVE";
+            const isResidual = log.type === "RESIDUAL_RETURN";
             const isNew = newLogIds.has(log.id);
             return (
               <div
@@ -242,8 +243,10 @@ export function ActivityFeed({ logs, pageSize = 5, title = "Aktivitas Terbaru", 
                     </p>
                   </div>
                 </div>
-                <span className={`text-xl font-bold shrink-0 ml-3 tabular-nums ${isPositive ? "text-emerald-600" : "text-red-500"}`}>
-                  {isPositive ? "+" : "−"}{formatQty(log.qty)}
+                <span className={`text-xl font-bold shrink-0 ml-3 tabular-nums ${
+                  isResidual ? "text-blue-500" : isPositive ? "text-emerald-600" : "text-red-500"
+                }`}>
+                  {isPositive ? "+" : isResidual ? "" : "−"}{formatQty(log.qty)}
                 </span>
               </div>
             );

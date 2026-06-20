@@ -177,7 +177,7 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
       submitLabel: "Catat Stock Out",
     },
     receive: {
-      label: "Terima Sisa",
+      label: "Catat Sisa Cat",
       activeClass: "bg-amber-500 text-white shadow-lg shadow-amber-200 focus-visible:ring-amber-400",
       inactiveHover: "hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 focus-visible:ring-amber-400",
       iconBg: "bg-amber-100",
@@ -187,7 +187,7 @@ export default function SideroomPageClient({ paintItems }: SideroomPageClientPro
       submitRing: "focus-visible:ring-amber-400",
       accentBar: "bg-gradient-to-r from-amber-400 to-amber-500",
       icon: <ArrowDown className="size-5" aria-hidden="true" />,
-      formTitle: "Terima Sisa Cat dari Painting",
+      formTitle: "Catat Sisa Cat",
       notesPlaceholder: "Kondisi cat, persentase sisa...",
       submitLabel: "Catat Sisa Cat",
     },

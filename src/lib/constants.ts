@@ -7,9 +7,9 @@ export const LOG_TYPE_LABELS: Record<string, string> = {
   STOCK_IN: "Stock In",
   STOCK_OUT: "Stock Out",
   SIDEROOM_RECEIVE: "Sideroom In",
-  RESIDUAL_RETURN: "Residual Return",
+  RESIDUAL_RETURN: "Sisa",
   DISPOSE: "Dispose",
-  PAINT_CONSUMED: "Consumed",
+  PAINT_CONSUMED: "Terpakai",
 };
 
 /** Colors for log type badges */

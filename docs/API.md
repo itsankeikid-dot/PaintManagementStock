@@ -6,6 +6,188 @@ The application uses **Next.js Server Actions** for all backend operations. Serv
 
 All server actions are located in `src/actions/`.
 
+---
+
+## Architecture Overview
+
+### Why Are There No REST API Endpoints?
+
+This project does **not** use traditional REST API routes (no `GET /api/items`, `POST /api/stock`, etc.). Instead, it leverages **Next.js Server Actions**, which are server-side functions that can be called directly from client-side code.
+
+For backend developers coming from Express, Django, or similar frameworks: think of each exported server action function as an "endpoint" — it has its own input contract, authorization checks, and return type, but it's invoked via an RPC-style call rather than an HTTP request to a URL.
+
+### Communication Flow
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  Browser (Client Component)                                          │
+│                                                                      │
+│   usePaintItems()  ──import──►  getPaintItems()                      │
+│   useDashboardData() ──import──►  getDashboardStats()                │
+│   useTransactionForm() ──import──►  createStockIn()                  │
+│                                        │                             │
+└────────────────────────────────────────┼─────────────────────────────┘
+                                         │  Next.js serializes the call
+                                         │  as a POST to /_next/server-actions/...
+                                         ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  Server (Node.js / Edge Runtime)                                     │
+│                                                                      │
+│   src/actions/*.ts  ("use server" directive)                         │
+│        │                                                             │
+│        ├── requireRole() → JWT session verification                  │
+│        └── createAdminClient() → Supabase service-role client        │
+│                                        │                             │
+└────────────────────────────────────────┼─────────────────────────────┘
+                                         │  Standard Supabase SDK calls
+                                         ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  Supabase (PostgreSQL + Realtime + Auth)                             │
+│                                                                      │
+│   Tables: paint_items, stock, logs, users                            │
+│   Triggers: auto-create stock row on new paint item                  │
+│   Realtime: broadcasts changes to subscribed clients                 │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Concepts
+
+#### 1. Server Actions = Your "Endpoints"
+
+Every function marked with `"use server"` at the top of its file is a server action. Next.js automatically generates an internal HTTP POST endpoint for it and wires up the client-side import to call that endpoint.
+
+```typescript
+// src/actions/paint-items.ts
+"use server";
+
+export async function getPaintItems(activeOnly = true): Promise<PaintItem[]> {
+  // This runs ONLY on the server.
+  // The browser never sees this code.
+  const supabase = createAdminClient();
+  const { data } = await supabase.from("paint_items").select("*");
+  return data || [];
+}
+```
+
+From the client side, you simply import and call it:
+
+```typescript
+// src/hooks/use-paint-items.ts
+"use client";
+
+import { getPaintItems } from "@/actions/paint-items";
+
+// Inside a hook or component:
+const items = await getPaintItems(true);
+```
+
+Next.js handles the serialization, network request, and deserialization automatically.
+
+#### 2. Two Supabase Clients
+
+| Client | File | Key Used | Purpose |
+|--------|------|----------|----------|
+| **Admin (server)** | `src/lib/supabase/admin.ts` | `SUPABASE_SERVICE_ROLE_KEY` | Used inside server actions. Bypasses RLS. Full database access. |
+| **Browser (client)** | `src/lib/supabase/client.ts` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Used only for **Realtime subscriptions** in the browser. Subject to RLS. |
+
+> ⚠️ The service role key is **never** exposed to the browser. It only exists in server-side environment variables.
+
+#### 3. Authentication Model
+
+Authentication is **custom PIN-based**, not Supabase Auth:
+
+- User enters a 4-digit PIN on the login page
+- `loginWithPin()` looks up the `users` table, verifies the PIN (bcrypt)
+- On success, a **JWT** is signed and stored as an `httpOnly` cookie (`paint_stock_session`)
+- Subsequent server actions call `getSession()` or `requireRole()` to verify the cookie
+- Supabase Auth is not used for user sessions — the `anon` key is only used for Realtime
+
+```
+Login Flow:
+  Browser → loginWithPin(pin) → [server: verify PIN] → set JWT cookie → redirect
+
+Subsequent Requests:
+  Browser → any server action → [server: read JWT from cookie] → execute query
+```
+
+#### 4. Realtime Subscriptions (The Exception)
+
+The **only** place the browser talks directly to Supabase is for **Realtime**:
+
+```typescript
+// src/hooks/use-realtime-subscription.ts
+const supabase = createClient(); // browser client with anon key
+supabase
+  .channel("dashboard")
+  .on("postgres_changes", { event: "*", schema: "public", table: "stock" }, refetch)
+  .subscribe();
+```
+
+When any server action modifies data (e.g., `createStockIn`), PostgreSQL triggers fire, Supabase Realtime broadcasts the change, and the browser subscription triggers a refetch of the affected data via server actions.
+
+This is the only "push" mechanism — all reads and writes still go through server actions.
+
+#### 5. Authorization in Server Actions
+
+Each mutating server action calls `requireRole()` at the top to enforce role-based access:
+
+```typescript
+export async function createStockIn(data: StockInInput) {
+  const session = await requireRole("admin", "warehouse"); // throws if unauthorized
+  // ... proceed with the operation
+}
+```
+
+Server Components (page files) use a separate `requireRole()` from `src/lib/auth-guard.ts` that redirects to `/login` instead of throwing.
+
+### Mapping to Traditional REST Concepts
+
+| Traditional REST | This Project |
+|-----------------|---------------|
+| `GET /api/paint-items` | `getPaintItems()` in `src/actions/paint-items.ts` |
+| `POST /api/paint-items` | `createPaintItem(data)` in `src/actions/paint-items.ts` |
+| `PATCH /api/paint-items/:id` | `updatePaintItem(id, data)` in `src/actions/paint-items.ts` |
+| `DELETE /api/paint-items/:id` | `deletePaintItem(id)` in `src/actions/paint-items.ts` |
+| `GET /api/stock` | `getStockLevels()` in `src/actions/stock.ts` |
+| `POST /api/transactions/stock-in` | `createStockIn(data)` in `src/actions/transactions.ts` |
+| `GET /api/dashboard/stats` | `getDashboardStats()` in `src/actions/dashboard.ts` |
+| JWT middleware / auth guard | `requireRole()` in `src/lib/session.ts` |
+| WebSocket subscriptions | `useRealtimeSubscription()` hook via Supabase Realtime |
+
+### File Structure Reference
+
+```
+src/
+├── actions/              ← "Backend" — all server actions live here
+│   ├── auth.ts           ← Login, logout, session management
+│   ├── paint-items.ts    ← CRUD for paint master data
+│   ├── stock.ts          ← Stock level queries
+│   ├── transactions.ts   ← Stock-in, stock-out, residual, dispose
+│   ├── dashboard.ts      ← Aggregated dashboard stats & charts
+│   └── users.ts          ← User CRUD (admin only)
+│
+├── hooks/                ← Client-side hooks that call server actions
+│   ├── use-paint-items.ts
+│   ├── use-dashboard-data.ts
+│   ├── use-transaction-form.ts
+│   └── use-realtime-subscription.ts
+│
+├── lib/
+│   ├── supabase/
+│   │   ├── admin.ts      ← Service-role client (server only)
+│   │   └── client.ts     ← Browser client (Realtime only)
+│   ├── session.ts        ← JWT cookie helpers + requireRole
+│   └── auth-guard.ts     ← Server Component auth guard (redirect)
+│
+└── app/
+    └── <route>/
+        ├── page.tsx          ← Server Component (auth guard, layout)
+        └── page-client.tsx   ← Client Component (hooks, UI, action calls)
+```
+
+---
+
 ## Authentication Actions
 
 ### `loginWithPin(pin: string)`

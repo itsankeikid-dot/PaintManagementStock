@@ -70,6 +70,24 @@ export interface DailyUsage {
   wasted: number;
 }
 
+/** Aggregated usage metrics per paint item for a given date range. */
+export interface PaintItemUsageSummary {
+  paint_item_id: string;
+  paint_name: string;
+  color_code: string;
+  color_hex: string;
+  total_issued: number;
+  total_consumed: number;
+  total_wasted: number;
+  transaction_count: number;
+  /** Percentage: wasted / issued * 100 */
+  waste_ratio: number;
+  /** kg/day: consumed / days in range */
+  consumption_rate: number;
+  /** ISO date string or null if never used in range */
+  last_used: string | null;
+}
+
 /** Aggregated dashboard statistics shown in monitoring cards */
 export interface DashboardStats {
   totalItems: number;

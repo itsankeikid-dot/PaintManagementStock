@@ -1,14 +1,17 @@
 "use client";
 
+import { useMemo } from "react";
 import { Download } from "lucide-react";
 import { ActivityFeed } from "@/components/shared/activity-feed";
 import { useDashboardData } from "@/hooks/use-dashboard-data";
 import { useDailyUsage } from "@/hooks/use-daily-usage";
 import { useDashboardExport } from "@/hooks/use-dashboard-export";
+import { usePaintItemUsage } from "@/hooks/use-paint-item-usage";
 import { DashboardSkeleton } from "./_components/dashboard-skeleton";
 import { MonitoringCards } from "./_components/monitoring-cards";
 import { AdminQuickAccess } from "./_components/admin-quick-access";
 import { DailyUsageChart } from "./_components/daily-usage-chart";
+import { PaintItemUsageSummary } from "./_components/paint-item-usage-summary";
 import { LowStockTable } from "./_components/low-stock-table";
 import { StockTable } from "./_components/stock-table";
 import type { UserRole } from "@/types/database";
@@ -46,9 +49,35 @@ export default function DashboardPageClient({ role }: { role: UserRole }) {
   const {
     isExportingUsage,
     isExportingTx,
+    isExportingPaintItem,
     handleExportDailyUsage,
     handleExportTransactions,
+    handleExportPaintItemUsage,
   } = useDashboardExport(getActiveDateRange);
+
+  const {
+    usageSummary,
+    selectedPaintItemId,
+    setSelectedPaintItemId,
+    filteredDailyUsage,
+    isFetchingSummary,
+  } = usePaintItemUsage(refreshTick, getActiveDateRange);
+
+  // Extract paint items from stock data for the chart filter dropdown
+  const paintItems = useMemo(
+    () =>
+      stockData
+        .map((s) => s.paint_items)
+        .filter(Boolean)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [stockData],
+  );
+
+  // Derive low-stock paint_item IDs for inline highlighting in StockTable
+  const lowStockIds = useMemo(
+    () => new Set(lowStock.map((s) => s.paint_item_id)),
+    [lowStock],
+  );
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -76,6 +105,17 @@ export default function DashboardPageClient({ role }: { role: UserRole }) {
         onCustomToChange={setCustomTo}
         isExporting={isExportingUsage}
         onExport={handleExportDailyUsage}
+        paintItems={paintItems}
+        selectedPaintItemId={selectedPaintItemId}
+        onPaintItemChange={setSelectedPaintItemId}
+        filteredDailyUsage={filteredDailyUsage}
+      />
+
+      <PaintItemUsageSummary
+        usageSummary={usageSummary}
+        isExporting={isExportingPaintItem}
+        onExport={handleExportPaintItemUsage}
+        isLoading={isFetchingSummary}
       />
 
       <LowStockTable lowStock={lowStock} />
@@ -85,7 +125,7 @@ export default function DashboardPageClient({ role }: { role: UserRole }) {
           Detail Stok & Transaksi
         </h3>
         <div className="grid gap-5 xl:grid-cols-2">
-          <StockTable stockData={stockData} />
+          <StockTable stockData={stockData} lowStockIds={lowStockIds} />
 
           <ActivityFeed
             logs={recentLogs}

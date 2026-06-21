@@ -37,6 +37,7 @@ yarn-error.log*
 
 .claude
 .kiro
+.vscode
 
 # vercel
 .vercel

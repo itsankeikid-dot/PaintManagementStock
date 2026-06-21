@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getLogsForExport } from "@/actions/transactions";
+import { getPaintItemUsageSummary } from "@/actions/dashboard";
 import { LOG_TYPE_LABELS } from "@/lib/constants";
 import { formatDateTimeReadableWIB } from "@/lib/date-utils";
 import { formatQty } from "@/lib/format-utils";
@@ -60,6 +61,7 @@ const toCsvRow = (l: Awaited<ReturnType<typeof getLogsForExport>>[number]) => [
 export function useDashboardExport(getActiveDateRange: () => DateRange | null) {
   const [isExportingUsage, setIsExportingUsage] = useState(false);
   const [isExportingTx, setIsExportingTx] = useState(false);
+  const [isExportingPaintItem, setIsExportingPaintItem] = useState(false);
 
   const handleExportDailyUsage = async () => {
     const range = getActiveDateRange();
@@ -113,10 +115,62 @@ export function useDashboardExport(getActiveDateRange: () => DateRange | null) {
     }
   };
 
+  const handleExportPaintItemUsage = async () => {
+    const range = getActiveDateRange();
+    if (!range) return;
+    setIsExportingPaintItem(true);
+    try {
+      const summary = await getPaintItemUsageSummary(range.from, range.to);
+      const headers = [
+        "Nama Cat", "Kode Warna", "Dikeluarkan (kg)", "Terpakai (kg)",
+        "Dibuang (kg)", "Rasio Buang (%)", "Rata-rata/hari (kg)", "Transaksi", "Terakhir Dipakai",
+      ];
+      const rows = summary.map((s) => [
+        s.paint_name,
+        s.color_code,
+        s.total_issued.toFixed(2),
+        s.total_consumed.toFixed(2),
+        s.total_wasted.toFixed(2),
+        s.waste_ratio.toFixed(1),
+        s.consumption_rate.toFixed(2),
+        String(s.transaction_count),
+        s.last_used ? s.last_used.split("T")[0] : "-",
+      ]);
+
+      // Summary rows
+      const totalIssued = summary.reduce((s, r) => s + r.total_issued, 0);
+      const totalConsumed = summary.reduce((s, r) => s + r.total_consumed, 0);
+      const totalWasted = summary.reduce((s, r) => s + r.total_wasted, 0);
+      const totalTx = summary.reduce((s, r) => s + r.transaction_count, 0);
+      const summaryRows = [
+        ["TOTAL", "", totalIssued.toFixed(2), totalConsumed.toFixed(2), totalWasted.toFixed(2), "", "", String(totalTx), ""],
+      ];
+
+      downloadCSV(
+        `analisis-per-item-${range.from}_${range.to}.csv`,
+        headers,
+        rows,
+        {
+          title: "Laporan Analisis Penggunaan per Item Cat",
+          info: [
+            `Periode: ${formatRangeLabel(range.from, range.to)}`,
+            `Total item: ${summary.length}`,
+          ],
+          summary: summaryRows,
+          numericColumns: [2, 3, 4, 5, 6, 7],
+        }
+      );
+    } finally {
+      setIsExportingPaintItem(false);
+    }
+  };
+
   return {
     isExportingUsage,
     isExportingTx,
+    isExportingPaintItem,
     handleExportDailyUsage,
     handleExportTransactions,
+    handleExportPaintItemUsage,
   };
 }

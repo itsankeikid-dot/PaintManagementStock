@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getDashboardStats, getLowStockItems } from "@/actions/dashboard";
+import type { LowStockItem } from "@/actions/dashboard";
 import { getStockLevels } from "@/actions/stock";
 import { getLogEntries } from "@/actions/transactions";
-import { DEFAULT_LOW_STOCK_THRESHOLD } from "@/lib/constants";
 import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 import type { DashboardStats, RealtimeStatus, Stock, PaintItem, Log, User } from "@/types/database";
 
@@ -23,7 +23,7 @@ export function useDashboardData() {
     todayTransactions: 0,
   });
   const [stockData, setStockData] = useState<StockWithItem[]>([]);
-  const [lowStock, setLowStock] = useState<StockWithItem[]>([]);
+  const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
   const [recentLogs, setRecentLogs] = useState<LogWithRelations[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -37,7 +37,7 @@ export function useDashboardData() {
         await Promise.all([
           getDashboardStats(),
           getStockLevels(),
-          getLowStockItems(DEFAULT_LOW_STOCK_THRESHOLD),
+          getLowStockItems(),
           getLogEntries({ limit: 100 }),
         ]);
 

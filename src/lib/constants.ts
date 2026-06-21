@@ -23,6 +23,23 @@ export const LOG_TYPE_COLORS: Record<string, string> = {
   PAINT_CONSUMED: "bg-orange-100 text-orange-800",
 };
 
-/** Default low stock threshold — total stock (warehouse + sideroom) in kg. */
-export const DEFAULT_LOW_STOCK_THRESHOLD = 100;
+/**
+ * Low-stock threshold configuration.
+ * Each paint item's threshold = avg daily consumption × multiplier.
+ * Only warehouse stock is compared against this threshold; sideroom
+ * stock is shown for reference but does not affect the determination.
+ */
+
+/** Multiplier applied to average daily consumption to derive the safety-stock threshold. */
+export const LOW_STOCK_CONSUMPTION_MULTIPLIER = 2.5;
+
+/** Number of days of historical log data used to compute average daily consumption. */
+export const LOW_STOCK_LOOKBACK_DAYS = 30;
+
+/**
+ * Minimum threshold floor (kg). Items with zero or very low historical
+ * consumption still get flagged when stock drops below this value so they
+ * never silently run out.
+ */
+export const LOW_STOCK_MIN_FLOOR_KG = 5;
 

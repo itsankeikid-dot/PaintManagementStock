@@ -3,14 +3,12 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
-import { DEFAULT_LOW_STOCK_THRESHOLD } from "@/lib/constants";
+import { LOW_STOCK_LOOKBACK_DAYS, LOW_STOCK_CONSUMPTION_MULTIPLIER } from "@/lib/constants";
 import { formatQty } from "@/lib/format-utils";
-import type { Stock, PaintItem } from "@/types/database";
-
-type StockWithItem = Stock & { paint_items: PaintItem };
+import type { LowStockItem } from "@/actions/dashboard";
 
 interface LowStockTableProps {
-  lowStock: StockWithItem[];
+  lowStock: LowStockItem[];
 }
 
 export function LowStockTable({ lowStock }: LowStockTableProps) {
@@ -31,7 +29,6 @@ export function LowStockTable({ lowStock }: LowStockTableProps) {
       if (prevTotal !== undefined && prevTotal !== total) {
         ids.add(item.id);
       } else if (prevTotal === undefined && prev.size > 0) {
-        // New item appeared
         ids.add(item.id);
       }
     });
@@ -56,7 +53,7 @@ export function LowStockTable({ lowStock }: LowStockTableProps) {
             Stok Rendah
           </h3>
           <p className="text-sm text-slate-500 mt-0.5">
-            Item dengan total stok ≤ {DEFAULT_LOW_STOCK_THRESHOLD} kg perlu segera di-restock
+            Stok gudang di bawah batas minimum (rata-rata konsumsi harian × {LOW_STOCK_CONSUMPTION_MULTIPLIER})
           </p>
         </div>
       </div>
@@ -72,7 +69,7 @@ export function LowStockTable({ lowStock }: LowStockTableProps) {
                   {lowStock.length} item perlu perhatian
                 </CardTitle>
                 <p className="text-xs text-rose-600 mt-0.5">
-                  Di bawah batas minimum ({DEFAULT_LOW_STOCK_THRESHOLD} kg)
+                  Batas dinamis berdasarkan konsumsi {LOW_STOCK_LOOKBACK_DAYS} hari terakhir
                 </p>
               </div>
             </div>
@@ -91,10 +88,10 @@ export function LowStockTable({ lowStock }: LowStockTableProps) {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-rose-50/40 border-b border-rose-100">
-                {["Item Cat", "Warehouse", "Sideroom", "Total"].map((h) => (
+                {["Item Cat", "Warehouse", "Sideroom", "Batas Min.", "Konsumsi/hari"].map((h) => (
                   <th
                     key={h}
-                    className={`px-5 py-2.5 text-xs font-semibold text-rose-700 uppercase tracking-wide whitespace-nowrap ${h !== "Item Cat" ? "text-right" : "text-left"}`}
+                    className={`px-5 py-2.5 text-xs font-semibold text-rose-700 uppercase tracking-wide whitespace-nowrap ${h === "Item Cat" ? "text-left" : "text-right"}`}
                   >
                     {h}
                   </th>
@@ -103,8 +100,8 @@ export function LowStockTable({ lowStock }: LowStockTableProps) {
             </thead>
             <tbody className="divide-y divide-rose-50">
               {visible.map((item) => {
-                const total = item.stock_warehouse + item.stock_sideroom;
                 const isChanged = changedIds.has(item.id);
+                const pctOfThreshold = item.threshold > 0 ? (item.stock_warehouse / item.threshold) * 100 : 0;
                 return (
                   <tr key={item.id} className={`hover:bg-rose-50/40 transition-colors duration-100 ${isChanged ? "animate-flash" : ""}`}>
                     <td className="px-5 py-3">
@@ -123,19 +120,24 @@ export function LowStockTable({ lowStock }: LowStockTableProps) {
                       </div>
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <span className={`text-sm font-semibold tabular-nums ${item.stock_warehouse === 0 ? "text-rose-600" : "text-slate-700"}`}>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-sm font-bold tabular-nums ${item.stock_warehouse === 0 ? "bg-rose-100 text-rose-700" : pctOfThreshold < 50 ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-700"}`}>
+                        {item.stock_warehouse === 0 && <span className="w-1.5 h-1.5 rounded-full bg-rose-500" aria-hidden="true" />}
                         {formatQty(item.stock_warehouse)}
                       </span>
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <span className={`text-sm font-semibold tabular-nums ${item.stock_sideroom === 0 ? "text-rose-600" : "text-slate-700"}`}>
+                      <span className={`text-sm font-semibold tabular-nums ${item.stock_sideroom === 0 ? "text-slate-400" : "text-slate-700"}`}>
                         {formatQty(item.stock_sideroom)}
                       </span>
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-sm font-bold tabular-nums ${total === 0 ? "bg-rose-100 text-rose-700" : "bg-amber-50 text-amber-700"}`}>
-                        {total === 0 && <span className="w-1.5 h-1.5 rounded-full bg-rose-500" aria-hidden="true" />}
-                        {formatQty(total)}
+                      <span className="text-sm tabular-nums text-slate-600">
+                        {item.threshold.toFixed(1)} <span className="text-[10px] text-slate-400">kg</span>
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <span className="text-sm tabular-nums text-slate-600">
+                        {item.avgDailyConsumption.toFixed(2)} <span className="text-[10px] text-slate-400">kg/hari</span>
                       </span>
                     </td>
                   </tr>

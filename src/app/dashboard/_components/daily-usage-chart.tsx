@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   BarChart,
@@ -10,8 +10,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { Download } from "lucide-react";
-import type { DailyUsage } from "@/types/database";
+import { Download, Filter } from "lucide-react";
+import type { DailyUsage, PaintItem } from "@/types/database";
 import type { DateRangePreset } from "@/hooks/use-daily-usage";
 
 /* ── Bar configuration with animation ── */
@@ -97,6 +97,14 @@ interface DailyUsageChartProps {
   onCustomToChange: (value: string) => void;
   isExporting: boolean;
   onExport: () => void;
+  /** Optional paint items for per-item filtering */
+  paintItems?: PaintItem[];
+  /** Currently selected paint item ID (empty = all) */
+  selectedPaintItemId?: string;
+  /** Callback when paint item filter changes */
+  onPaintItemChange?: (paintItemId: string) => void;
+  /** Filtered daily usage data for the selected paint item */
+  filteredDailyUsage?: DailyUsage[];
 }
 
 const PRESETS: readonly [DateRangePreset, string][] = [
@@ -141,20 +149,32 @@ export function DailyUsageChart({
   onCustomToChange,
   isExporting,
   onExport,
+  paintItems = [],
+  selectedPaintItemId = "",
+  onPaintItemChange,
+  filteredDailyUsage,
 }: DailyUsageChartProps) {
-  const isEmpty = dailyUsage.every((d) => d.issued === 0 && d.consumed === 0 && d.wasted === 0);
+  // Use filtered data when a paint item is selected, otherwise use all data
+  const chartData = useMemo(() => {
+    if (selectedPaintItemId && filteredDailyUsage && filteredDailyUsage.length > 0) {
+      return filteredDailyUsage;
+    }
+    return dailyUsage;
+  }, [dailyUsage, filteredDailyUsage, selectedPaintItemId]);
+
+  const isEmpty = chartData.every((d) => d.issued === 0 && d.consumed === 0 && d.wasted === 0);
 
   // Flash animation on realtime data update
-  const prevDataLen = useRef(dailyUsage.length);
+  const prevDataLen = useRef(chartData.length);
   const [flash, setFlash] = useState(false);
   useEffect(() => {
-    if (dailyUsage.length !== prevDataLen.current || dailyUsage.length > 0) {
+    if (chartData.length !== prevDataLen.current || chartData.length > 0) {
       setFlash(true);
       const t = setTimeout(() => setFlash(false), 800);
-      prevDataLen.current = dailyUsage.length;
+      prevDataLen.current = chartData.length;
       return () => clearTimeout(t);
     }
-  }, [dailyUsage]);
+  }, [chartData]);
 
   return (
     <section className="space-y-3">
@@ -200,9 +220,26 @@ export function DailyUsageChart({
                   />
                 </div>
               )}
+              {paintItems.length > 0 && onPaintItemChange && (
+                <div className="flex items-center gap-1.5">
+                  <Filter className="size-3.5 text-[#94A3B8]" aria-hidden="true" />
+                  <select
+                    value={selectedPaintItemId}
+                    onChange={(e) => onPaintItemChange(e.target.value)}
+                    className="h-8 rounded-lg border border-[#E2E8F0] bg-white px-2 text-xs font-semibold text-[#475569] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#0e7ad5]/30 focus:border-[#0e7ad5]"
+                  >
+                    <option value="">Semua Cat</option>
+                    {paintItems.map((pi) => (
+                      <option key={pi.id} value={pi.id}>
+                        {pi.name} ({pi.color_code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <button
                 onClick={onExport}
-                disabled={dailyUsage.length === 0 || isExporting}
+                disabled={chartData.length === 0 || isExporting}
                 className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg border border-[#E2E8F0] bg-white text-xs font-semibold text-[#475569] hover:bg-[#F8FAFC] transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Download className={`size-3.5 ${isExporting ? "animate-pulse" : ""}`} aria-hidden="true" />
@@ -218,7 +255,7 @@ export function DailyUsageChart({
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={dailyUsage} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+              <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="#e5e7eb" vertical={false} />
                 <XAxis
                   dataKey="date"

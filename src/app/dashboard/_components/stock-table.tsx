@@ -12,7 +12,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Palette, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, Search, X } from "lucide-react";
-import { DEFAULT_LOW_STOCK_THRESHOLD } from "@/lib/constants";
 import { formatQty } from "@/lib/format-utils";
 import type { Stock, PaintItem } from "@/types/database";
 
@@ -31,9 +30,11 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
 
 interface StockTableProps {
   stockData: StockWithItem[];
+  /** Set of paint-item IDs that are currently below their dynamic threshold. */
+  lowStockIds?: Set<string>;
 }
 
-export function StockTable({ stockData }: StockTableProps) {
+export function StockTable({ stockData, lowStockIds }: StockTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -177,7 +178,7 @@ export function StockTable({ stockData }: StockTableProps) {
             ) : (
               paginated.map((item) => {
                 const total = item.stock_warehouse + item.stock_sideroom;
-                const isLow = total <= DEFAULT_LOW_STOCK_THRESHOLD;
+                const isLow = lowStockIds?.has(item.paint_items?.id ?? "") ?? false;
                 const isChanged = changedIds.has(item.id);
                 return (
                   <TableRow key={item.id} className={`${isLow ? "bg-rose-50/80" : ""} ${isChanged ? "animate-flash" : ""} transition-colors duration-100`}>

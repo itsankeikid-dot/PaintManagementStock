@@ -8,9 +8,11 @@ The database uses PostgreSQL via Supabase. The schema is designed to track paint
 
 ```mermaid
 erDiagram
-    users ||--o{ log : "creates"
-    paint_items ||--|| stock : "has"
-    paint_items ||--o{ log : "tracks"
+    users ||--o{ log : creates
+    paint_items ||--|| stock : has
+    paint_items ||--o{ log : tracks
+    paint_items ||--o{ rack : has
+    log ||--o{ rack : track
 
     users {
         uuid id PK
@@ -23,11 +25,13 @@ erDiagram
     paint_items {
         uuid id PK
         text name
-        text color_code
-        text color_hex
-        text can_size
+        numeric pch_unit
+        numeric packing_size
+        numeric pch_price
         numeric weight_per_can
-        text category
+        text MSDS
+        text TDS
+        numeric max_on_rack
         boolean is_active
         timestamptz created_at
         timestamptz updated_at
@@ -45,14 +49,23 @@ erDiagram
         uuid id PK
         uuid paint_item_id FK
         uuid user_id FK
+        uuid rack_id FK
         log_type type
         numeric qty
         text notes
         text condition
+        numberic remainin_qty
         timestamptz created_at
     }
-```
 
+    rack {
+        uuid id PK
+        uuid paint_item_id FK
+        numeric qty
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
 ## Tables
 
 ### `users`

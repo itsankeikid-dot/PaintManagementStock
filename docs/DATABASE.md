@@ -33,6 +33,7 @@ erDiagram
         text TDS
         numeric max_on_rack
         boolean is_active
+        datetime exp_date
         timestamptz created_at
         timestamptz updated_at
     }

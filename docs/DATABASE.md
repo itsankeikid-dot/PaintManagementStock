@@ -11,8 +11,6 @@ erDiagram
     users ||--o{ log : creates
     paint_items ||--|| stock : has
     paint_items ||--o{ log : tracks
-    paint_items ||--o{ rack : has
-    log ||--o{ rack : track
 
     users {
         uuid id PK
@@ -42,30 +40,24 @@ erDiagram
         uuid id PK
         uuid paint_item_id FK
         numeric stock_warehouse
-        numeric stock_sideroom
-        timestamptz updated_at
+        numeric stock_sideroom_1
+        numeric stock_sideroom_2
+        timestamptz warehouse_updated_at
+        timestamptz sideroom_1_updated_at
+        timestamptz sideroom_2_updated_at
     }
 
     log {
         uuid id PK
         uuid paint_item_id FK
         uuid user_id FK
-        uuid rack_id FK
         log_type type
         numeric qty
         text notes
-        text condition
-        numberic remainin_qty
         timestamptz created_at
     }
 
-    rack {
-        uuid id PK
-        uuid paint_item_id FK
-        numeric qty
-        timestamptz created_at
-        timestamptz updated_at
-    }
+
 ```
 ## Tables
 

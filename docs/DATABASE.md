@@ -57,6 +57,14 @@ erDiagram
         timestamptz created_at
     }
 
+    additional_graph_data {
+        uuid id PK
+        uuid id_paint
+        numeric usage_target
+        numeric percentage_to_purchasing
+        date data_date
+
+    }
 
 ```
 ## Tables
